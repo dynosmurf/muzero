@@ -1,0 +1,3 @@
+docker stop muzero-lab && echo "Container stopped succesfully."
+docker stop muzero-redis && echo "DB stopped succesfully."
+docker network rm muzero-net && echo "Network removed."
