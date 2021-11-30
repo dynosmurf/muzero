@@ -2,11 +2,9 @@ from tensorflow.keras import Model
 import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
 import numpy as np
-from tensorflow.keras.utils import to_categorical
-from src.networks.utils import scale_gradient, scale_target, scalar_loss, encode_support, decode_support, unscale_target, ce_loss
-from pprint import pprint
 import io
-from datetime import datetime
+
+from src.networks.utils import scale_gradient, scale_target, scalar_loss, encode_support, decode_support, unscale_target
 from src.data_classes import NetworkOutput
 from src.prof import p, fl
 
@@ -16,25 +14,17 @@ class Network(Model):
     def __init(self):
         super(Model, self).__init__()
 
+
     def compile(self, optimizer):
-        # super(Model, self).compile()
         self.optimizer = optimizer
 
+
     def train_step(self, batch, weight_decay):
-
-        # h3 = p.start('update_weights')
-
-        # stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        # logdir = 'logs/func/%s' % stamp
-        # writer = tf.summary.create_file_writer(logdir)
-
-        # Bracket the function call with
-        # tf.summary.trace_on() and tf.summary.trace_export()
-        # tf.summary.trace_on(graph=True, profiler=True)
 
         batch_rewards = batch.rewards
         batch_values = batch.values
         batch_policy_probs = batch.policy_probs
+
         observations = tf.Variable(tnp.array(batch.observations), name="observations")
         actions = tf.Variable(tnp.array(batch.actions), name="actions")
 
@@ -47,35 +37,8 @@ class Network(Model):
                 weight_decay
                 )
 
-        """
-        cf = self.update_weights.get_concrete_function(batch_size, 
-                unroll_steps, 
-                weight_decay,
-                batch.observations,
-                batch.actions, 
-                batch.rewards, 
-                batch.values,
-                batch.policy_probs)
-        """
-
-        # graph = cf.graph
-        #for node in graph.as_graph_def().node:
-        #    print(f'{node.input} -> {node.name}')
-
-        # with writer.as_default():
-        #   tf.summary.trace_export(
-        #           name="my_func_trace",
-        #           step=0,
-        #           profiler_outdir=logdir)
-
-        print(">>> [TRAIN] loss={} value_loss={} reward_loss={} policy_loss={} reg_loss={}".format(
-               metrics['loss'], metrics['value_loss'], metrics['reward_loss'], metrics['policy_loss'], metrics['reg_loss']
-               ))
-
-        # p.stop(h3)
-        # p.dump_log('./prof1.prof')
-
         return metrics
+
 
     def update_weights(self, observations_batch, action_batch, reward_batch, value_batch, policy_batch, weight_decay):
 
@@ -89,16 +52,15 @@ class Network(Model):
         with tf.GradientTape(watch_accessed_variables=False) as tape:
             tape.watch(trainable_vars)
 
-            # h = p.start('initial_inference')
             value_logits, _, policy_logits, hidden_state = self._initial_inference(observations_batch)
-            # p.stop(h)
 
             grad_weights = [1]
 
-            predicted_value_logits = [value_logits]
+
             # we ignore the first reward as initial_inference doesn't produce a reward
-            # TODO would it help to pass a real value through from the env here since this is essentially
-            predicted_reward_logits = [tnp.zeros((batch_size, self.support_dim), dtype="float32")]
+            # we add zeros here so the rollout dim matches between reward, value and policy
+            predicted_reward_logits = [encode_support(tnp.zeros((batch_size,), dtype="float32"), self.support_size)]
+            predicted_value_logits = [value_logits]
             predicted_policy_logits = [policy_logits]
 
             for i in range(unroll_steps):
@@ -133,13 +95,12 @@ class Network(Model):
 
             reg_loss = weight_decay * tf.add_n([ 
                 tf.nn.l2_loss(v) for v in trainable_vars
-                if 'bias' not in v.name 
+                if 'bias' not in v.name
                 ])
 
             loss = loss + reg_loss
         
         gradients = tape.gradient(loss, trainable_vars)
-        # self.optimizer.minimize(loss, trainable_vars, tape=tape)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
         return {
@@ -158,8 +119,6 @@ class Network(Model):
 
         # print(f"[PRED] values={value_logits[0]}, rewards={reward_logits[0]}")
         # print(f"[TARG] values={target_values[0]}, rewards={target_rewards[0]}")
-
-        scaled_target_values = scale_target(target_values)
 
         value_loss = tf.nn.softmax_cross_entropy_with_logits(
             encode_support(scale_target(target_values), self.support_size),

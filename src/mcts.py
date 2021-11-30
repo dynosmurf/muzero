@@ -3,10 +3,10 @@ from numba.experimental import jitclass
 
 import numpy as np
 import math
-from src.prof import p, fl
 
+from src.prof import p, fl
 from src.util import softmax_sample
-from src.networks.utils import unscale_target
+
 
 class MCTSNode():
 
@@ -23,8 +23,10 @@ class MCTSNode():
         self.reward = 0
         self.is_leaf = True
 
+
     def is_expanded(self):
         return self.is_leaf == False
+
 
     def expand(self, to_play, actions, network_output):
 
@@ -37,18 +39,24 @@ class MCTSNode():
         for i, action in enumerate(actions):
             self.children[action] = MCTSNode(0.5) #network_output.policy[i])
 
+
     def __str__(self):
         return "<prior={}, visit_count={}, value_sum={}, value={}, reward={}, children={}>".format(
-                self.prior, self.visit_count, self.value_sum, self.value(), self.reward, len(self.children))
+                self.prior, self.visit_count, self.value_sum, self.value(), self.reward, len(self.children)
+                )
+
 
     def __repr__(self):
         return str(self)
 
+
     def value(self):
         return 0.0 if self.visit_count == 0 else float(self.value_sum / self.visit_count)
 
+
 def update_min_max(min_max_tuple, value):
     return (min(min_max_tuple[0], value), max(min_max_tuple[1], value))
+
 
 def normalize(min_max_tuple, value):
     if min_max_tuple[1] > min_max_tuple[0]:
@@ -56,12 +64,12 @@ def normalize(min_max_tuple, value):
     else:
         return value
 
-"""
-Provided with the current network, and the actions taken 
-at time t = 1...T, perform a search over possible future trajectories.
-"""
 
 class MonteCarloTreeSearch():
+    """
+    Provided with the current network, and the actions taken 
+    at time t = 1...T, perform a search over possible future trajectories.
+    """
 
     def __init__(self, config, env, network):
 
@@ -73,19 +81,17 @@ class MonteCarloTreeSearch():
         self.value_bounds = (float("inf"), -1 * float("inf"))
 
         initial_state = env.get_state(-1).reshape(self.config.input_shape)
-        # h = p.start('mcts-initial_inference')
         network_output = network.initial_inference(initial_state)
-        # p.stop(h)
 
         legal_actions = env.get_possible_moves()
 
         self.root.expand(self.to_play, legal_actions, network_output)
         self.add_exploration_noise(self.root)
 
-        # fl.log(f"[MCTS] [init]\n\n    {str(self.root)}\n")
 
     def get_root_value(self):
         return self.root.value_sum
+
 
     def get_root_visits(self):
         visits = np.zeros(self.config.action_space_size)
@@ -93,18 +99,12 @@ class MonteCarloTreeSearch():
             visits[action] = child.visit_count
         return visits
 
+
     def execute(self, num_simulations):
         
-        # print(f"\n\n[SIM] [-----------------------------------]")
         for _ in range(num_simulations):
-            # print(f"\n[STEP] [{_}]")
-            #fl.log(f"[MCTS] [step] [{_}]\n")
-            node = self.root
 
-            #fl.log(f"    {self.root.children[0]}\n")
-            #fl.log(f"    {self.root.children[1]}\n")
-            #fl.log(f"    {self.ucb_score(self.root, self.root.children[0])}\n")
-            #fl.log(f"    {self.ucb_score(self.root, self.root.children[1])}\n")
+            node = self.root
 
             search_path = [node]
 
@@ -114,29 +114,14 @@ class MonteCarloTreeSearch():
 
             parent = search_path[-2]
 
-            # h2 = p.start('mcts-recurrent_inference')
-            # Requires network execution may need to break out of numba context here
             network_output = self.network.recurrent_inference(parent.hidden_state, action)
-            # p.stop(h2)
 
             next_player = self.env.to_play(self.to_play, len(search_path))
             all_actions = list(range(self.config.action_space_size))
 
-            # print(f"\n[step]: policy_logits:{network_output.policy_logits}, reward:{network_output.reward}, value:{network_output.value}")
-
             node.expand(next_player, all_actions, network_output)
 
-            # fl.log(f"\n    [expand]: policy_logits:{np.array(network_output.policy_logits)}, reward:{np.array(network_output.reward)}, value:{value}")
-
-            # fl.log(f"\n    [before backpropagate] ----------\n")
-            # fl.log(str(self))
-
             self.backpropagate(search_path, network_output.value, next_player)
-
-            # fl.log(f"\n    [after backpropagate] ----------\n")
-            # fl.log(str(self))
-
-        # fl.dump_log("./mcts-full-debug.out")
 
 
     def select_action(self, temp=1):
@@ -150,6 +135,7 @@ class MonteCarloTreeSearch():
 
         _, action = softmax_sample(visit_counts, actions, temp)
         return action
+
 
     def select_child(self, node):
         """

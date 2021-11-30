@@ -2,8 +2,13 @@ import numpy as np
 from dataclasses import dataclass
 import msgpack
 import msgpack_numpy as m
+
 from src.game import GameLog
+from src.data_classes import Batch
+
+# this is required for msgpack_numpy to work
 m.patch()
+
 
 def random_action(action_space_size):
     return np.random.choice(list(range(action_space_size)))
@@ -11,6 +16,7 @@ def random_action(action_space_size):
 def normalize(l):
     t = np.sum(l, axis=-1)
     return l / t
+
 
 class ReplayBuffer(object):
 
@@ -29,11 +35,20 @@ class ReplayBuffer(object):
         self.buffer.append(msgpack.packb(game.serialize()))
         self.stats.append(len(game)) 
 
-    def avg_len(self):
-        return np.mean([int(s) for s in self.stats])
+
+    def avg_len(self, length=None):
+        if len(self) == 0:
+            return 0
+        elif length is None:
+            return np.mean([int(s) for s in self.stats])
+        else:
+            stats = [int(s) for s in self.stats]
+            return np.mean(np.array(stats)[len(stats) - length:])
+
 
     def last_len(self):
         return int(self.stats[-1])
+
 
     def sample_batch(self, num_unroll_steps, td_steps):
         game_logs = [self.sample_game() for _ in range(self.batch_size)]
@@ -83,6 +98,7 @@ class ReplayBuffer(object):
         # Sample position from game either uniformly or according to some priority.
         return np.random.choice(np.arange(len(game)))
 
+
     def get_actions(self, game, idx):
         unroll_steps = self.config.num_unroll_steps
         action_space_size = self.config.action_space_size
@@ -94,6 +110,7 @@ class ReplayBuffer(object):
             actions[i] = game.history[ig].action if ig < len(game) else random_action(action_space_size)
 
         return actions
+
 
     def get_targets(self, game, idx):
 
@@ -143,14 +160,5 @@ class ReplayBuffer(object):
     def __len__(self):
         return len(self.buffer)
 
-@dataclass
-class Batch:
-    observations: np.ndarray
-    actions: np.ndarray
-    rewards: np.ndarray
-    values: np.ndarray
-    policy_probs: np.ndarray
 
 
-    def __len__(self):
-        return self.observations.shape[0]

@@ -120,6 +120,7 @@ class ResNetwork(Network):
     def __init__(self, state_shape, hidden_state_shape, action_space_size, downsample=None):
         super(Network, self).__init__()
         dynamics_shape = (1, hidden_state_shape[0] + 1, hidden_state_shape[1], hidden_state_shape[2])
+
         self.dynamics = build_dynamics(dynamics_shape, hidden_state_shape)
         self.representation = build_representation(state_shape, hidden_state_shape, downsample)
         self.prediction = build_prediction(hidden_state_shape, action_space_size)

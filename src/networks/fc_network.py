@@ -2,12 +2,10 @@ from tensorflow.keras.layers import *
 from tensorflow.keras import Model
 import tensorflow as tf
 import numpy as np
-from tensorflow.keras.utils import to_categorical   
-import typing
-from typing import Dict, List, Optional
-import tensorflow.experimental.numpy as tnp
+
 from src.networks.network import Network
-from src.networks.utils import dense_block, scale_to_0_1, to_prob, unscale_target
+from src.networks.utils import dense_block, scale_to_0_1
+
 
 def build_prediction(hidden_shape, action_space_size, support_size, hidden_layers=8, layer_size=64):
     x_in = Input(shape=hidden_shape)
@@ -63,7 +61,6 @@ def build_dynamics(hidden_shape, action_space_size, support_size, hidden_layers=
     return Model([state_in, actions_in], [hidden_state, x_reward])
 
 
-# muzero pg.14
 def build_representation(input_shape, hidden_state_shape, downsample=None, hidden_layers=8, layer_size=64):
     x_in = Input(shape=input_shape)
     x = Flatten()(x_in)

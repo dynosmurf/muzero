@@ -3,6 +3,7 @@ from pstats import SortKey
 import numpy as np
 import time
 
+
 def cpu_profile(method):
     def timed(*args, **kw):
         pr = cProfile.Profile()
@@ -17,6 +18,7 @@ def cpu_profile(method):
 
         return result    
     return timed
+
 
 def profile(method, t='cpu'):
     def wrapped(*args, **kw):
@@ -60,7 +62,6 @@ class ProfTimer():
 
         return out
 
-p = ProfTimer()
 
 class FileLogger():
 
@@ -76,5 +77,7 @@ class FileLogger():
             f.write('\n'.join(self._log))
         self._log = []
 
+
+p = ProfTimer()
 fl = FileLogger()
 
