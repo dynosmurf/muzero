@@ -11,7 +11,7 @@ from src.game import play_game
 from src.prof import p, fl
 from src.networks.utils import LRSched
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 def run_selfplay(config, replay_buffer, network_storage, test=False):
@@ -102,19 +102,19 @@ def muzero(config):
     global wrapped_run_selfplay
 
     def wrapped_run_selfplay(i, test=False):
-        print("[INFO] Starting worker {}".format(i))
+        logging.info(f"Starting worker {i}")
 
         replay_buffer, network_storage = get_storage(config)
 
         run_selfplay(config, replay_buffer, network_storage, test)
 
-    pool = Pool(processes=3)
+    pool = Pool(processes=config.num_actors + 1)
 
     # start test worker
     pool.apply_async(wrapped_run_selfplay, [0, True])
 
     # start self_play workers
-    for i in range(2):
+    for i in range(config.num_actors):
         pool.apply_async(wrapped_run_selfplay, [i+1, False])
 
 

@@ -13,6 +13,7 @@ class CartpoleConfig(Config):
                 input_shape=(1,2,2),
                 hidden_state_shape=(8,),
                 action_space_size=2,
+                max_moves=1000,
                 num_simulations=50,
                 num_actors=2,
                 training_steps=10000,
