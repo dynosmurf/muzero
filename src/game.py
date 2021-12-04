@@ -27,6 +27,8 @@ def play_game(config, network, env, step, test=False):
 
         action = mcts.select_action(temp)
 
+        print("[ACTION] ", action) 
+
         result = env.step(action)
 
         log.update(result, mcts.get_root_visits(), mcts.get_root_value()) 
@@ -58,6 +60,7 @@ class GameLog():
         return len(self.history)
 
     def serialize(self):
+        print(self.history)
         return ([
                 (t.action, t.reward, t.state, t.value, t.done) 
                 for t in self.history

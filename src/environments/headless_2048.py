@@ -1,4 +1,5 @@
 import numpy as np
+from src.data_classes import Turn
 
 def group(y):
     y = y[y != 0]
@@ -59,10 +60,10 @@ class Headless2048():
         self.total_score = 0.0
         self.game_over = False
 
-        self.history = [Turn(None, 0, np.copy(self.state), None, False)] 
+        self.history = [Turn(None, 0, np.copy(self.state), None, done=False)] 
 
     def reset(self):
-        self.state = np.zeros(shape=(size,size), dtype="uint8")
+        self.state = np.zeros(shape=(self.size,self.size), dtype="uint8")
         # start with two tiles
         self._gen_tile()
         self._gen_tile()
@@ -70,7 +71,7 @@ class Headless2048():
         self.total_score = 0.0
         self.game_over = False
 
-        self.history = [Turn(None, 0, np.copy(self.state), None, False)] 
+        self.history = [Turn(None, 0, np.copy(self.state), None, done=False)] 
 
     def get_history(self):
         return self.history
@@ -84,8 +85,8 @@ class Headless2048():
     def get_state(self, idx):
         return self.history[idx].state
 
-    def get_possible_moves(self):
-        moves = np.zeros(4)
+    def _possible_moves(self):
+        moves = np.zeros(4, dtype="uint8")
 
         for r in range(4):
             rstate = np.rot90(self.state, k=r)
@@ -103,6 +104,11 @@ class Headless2048():
 
         return moves
 
+    def get_possible_moves(self):
+        out = np.nonzero(self._possible_moves())[0]
+        print("[POSSIBLE]", out)
+        return out
+
     def is_done(self):
         return len(self.history) > 0 and self.history[-1].done
 
@@ -116,15 +122,14 @@ class Headless2048():
     def step(self, move):
 
         if self.game_over:
-            return -1 
+            return None 
 
-        pmoves = self.possible_moves()
+        pmoves = self._possible_moves()
 
         if pmoves[move] == 0:
-            self.last_move = (move, 0, 0, np.copy(self.state))
-            if self.history:
-                self.history.append(self.last_move)
-            return -1
+            self.last_move = Turn(move, 0, np.copy(self.state), 0, done=True)
+            self.history.append(self.last_move)
+            return self.last_move
 
         rstate = np.rot90(self.state, k=move)
 
@@ -146,9 +151,9 @@ class Headless2048():
 
         self._gen_tile()
 
-        self.last_move = (move, 1, score, np.copy(self.state))
+        self.last_move = Turn(move, score, np.copy(self.state), 0, done=False)
 
-        pmoves = self.possible_moves()
+        pmoves = self._possible_moves()
 
         if np.count_nonzero(pmoves) == 0:
             self._end_game()
@@ -163,7 +168,7 @@ class Headless2048():
             
             self.history.append(history_entry)
 
-        return score 
+        return self.last_move 
 
     def _end_game(self):
         self.game_over = True

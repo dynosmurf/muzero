@@ -1,8 +1,8 @@
 from src.config import Config
 from src.main import muzero
-from src.environments.cartpole import CartpoleEnvWrapper
+from src.environments.headless_2048 import Headless2048 
 from src.mcts import MonteCarloTreeSearch
-from src.networks.fc_network import FCNetwork, ResNetwork
+from src.networks.res_network import ResNetwork
 from src.prof import profile
 
 class Headless2048Config(Config):
@@ -10,8 +10,8 @@ class Headless2048Config(Config):
     def __init__(self):
 
         super().__init__(
-                input_shape=(1,4,4),
-                hidden_state_shape=(2,4,4),
+                input_shape=(4,4,1),
+                hidden_state_shape=(4,4,16),
                 action_space_size=4,
                 max_moves=1000,
                 num_simulations=50,
@@ -25,7 +25,7 @@ class Headless2048Config(Config):
                 lr_decay_rate=0.9,
                 discount=0.997,
                 window_size=512,
-                support_size=10)
+                support_size=20)
 
     def network_factory(self):
         return ResNetwork(
@@ -33,12 +33,10 @@ class Headless2048Config(Config):
                 self.hidden_state_shape,
                 self.action_space_size, 
                 self.support_size,
-                downsample=None, 
-                hidden_layers=1, 
-                layer_size=16)
+                downsample=None)
 
     def env_factory(self):
-        return Headless2048()
+        return Headless2048(4)
 
 if __name__ == '__main__':
     config = Headless2048Config()

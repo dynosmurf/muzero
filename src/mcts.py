@@ -86,6 +86,7 @@ class MonteCarloTreeSearch():
         legal_actions = env.get_possible_moves()
 
         self.root.expand(self.to_play, legal_actions, network_output)
+        print("[INIT]", self.root.children.keys())
         self.add_exploration_noise(self.root)
 
 
@@ -147,13 +148,13 @@ class MonteCarloTreeSearch():
         actions = list(node.children.keys())
         scores = [self.ucb_score(node, node.children[a]) for a in actions]
         max_score = np.max(scores)
-        scores = [(scores[a], a) for a in actions if scores[a] == max_score]
+        choices = [(scores[i], a) for i, a in enumerate(actions) if scores[i] == max_score]
 
-        if len(scores) == 0:
+        if len(choices) == 0:
             raise Exception("ZERO FOUND")
 
-        idx = np.random.choice(list(range(len(scores))))
-        max_action = scores[idx][1]
+        idx = np.random.choice(list(range(len(choices))))
+        max_action = choices[idx][1]
 
         return max_action, node.children[max_action]
 

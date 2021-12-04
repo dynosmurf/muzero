@@ -33,6 +33,8 @@ def run_selfplay(config, replay_buffer, network_storage, test=False):
 
             game_log = play_game(config, network, env, step, test=test)
 
+            print(game_log)
+
             replay_buffer.save_game(game_log)
             step += 1
 
