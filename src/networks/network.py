@@ -73,7 +73,9 @@ class Network(Model):
                 # -[squeeze]-> (batch_size x actions_size)
                 current_action = tf.squeeze(tf.slice(action_batch, [0, i], [batch_size, 1]), axis=1)
 
-                value_logits, reward_logits, policy_logits, hidden_state = self._recurrent_inference(hidden_state, current_action)
+                value_logits, reward_logits, policy_logits, hidden_state = self._recurrent_inference(
+                        hidden_state, current_action
+                        )
 
                 grad_weights.append(1/unroll_steps)
                 predicted_value_logits.append(value_logits)
@@ -121,7 +123,6 @@ class Network(Model):
             encode_support(scale_target(target_values), self.support_size),
             value_logits
         )
-        tf.print(value_logits[0])
         value_loss = scale_gradient(value_loss, grad_weights)
         value_loss = tf.reduce_sum(value_loss)
 
@@ -198,7 +199,6 @@ class Network(Model):
                 policy=np.array(policy)[0], 
                 hidden_state=np.array(hidden_state)[0]) 
 
-    @tf.function
     def _initial_inference(self, observation_batch):
         """
         Runs inital_inference step on batch of inputs and retuns raw output
@@ -214,7 +214,6 @@ class Network(Model):
         return (value_logits, None, policy_logits, hidden_state)
 
 
-    @tf.function
     def _recurrent_inference(self, hidden_state_batch, action_batch):
         """
         Runs recurrent_inference step on batch of inputs and retuns raw output
@@ -224,6 +223,8 @@ class Network(Model):
         action_one_hot = tf.one_hot(action_batch, self.action_space_size)
 
         next_hidden_state, reward_logits = self.dynamics([hidden_state_batch, action_one_hot])
+
+
         policy_logits, value_logits = self.prediction(next_hidden_state)
 
         return (value_logits, reward_logits, policy_logits, next_hidden_state)

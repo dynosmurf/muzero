@@ -43,7 +43,7 @@ else
     docker run --rm -p 6379:6379 \
       --name muzero-redis \
       --net muzero-net \
-      -v ./data:/data \
+      -v $PWD/data:/data \
       -d \
       redis redis-server --save 60 1 --loglevel warning
 fi

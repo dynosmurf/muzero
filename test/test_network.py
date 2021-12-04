@@ -300,13 +300,13 @@ class TestNetwork(unittest.TestCase):
                 batch_size=10,
                 td_steps=10,
                 num_actors=1,
-                lr_init=0.05,
+                lr_init=0.005,
                 lr_decay_steps=1000,
                 lr_decay_rate=1,
                 visit_softmax_temperature_fn=lambda i: 1 
                 )
 
-    def test_train_fc(self):
+    def _test_train_fc(self):
 
         state_shape = (4,)
         hidden_shape = (8,)
@@ -383,12 +383,12 @@ class TestNetwork(unittest.TestCase):
             r_out = network.recurrent_inference(r_out.hidden_state, a)
             print(f"reward={r_out.reward}, value={r_out.value}, policy={r_out.policy}")
 
-    def _test_train_res(self):
+    def test_train_res(self):
 
-        state_shape = (1,4,4)
-        hidden_shape = (1,8,8)
+        state_shape = (4,4,1)
+        hidden_shape = (4,4,16)
         action_space_size = 4
-        support_size = 20 
+        support_size = 10 
 
         network = ResNetwork(state_shape, 
                 hidden_shape, 
@@ -398,7 +398,22 @@ class TestNetwork(unittest.TestCase):
                 )
 
 
-        config = self.get_test_config()
+        config = Config(
+                state_shape,
+                hidden_shape,
+                action_space_size=action_space_size,
+                max_moves=10,
+                discount=0.997,
+                dirichlet_alpha=0.25,
+                num_simulations=10,
+                batch_size=10,
+                td_steps=10,
+                num_actors=1,
+                lr_init=0.005,
+                lr_decay_steps=1000,
+                lr_decay_rate=1,
+                visit_softmax_temperature_fn=lambda i: 1 
+                )
 
         lr_schedule = LRSched(config)
 
@@ -443,8 +458,10 @@ class TestNetwork(unittest.TestCase):
 
         batch_size = 128
 
+        obs = np.moveaxis(np.array(obs * batch_size, dtype="float32"), 1, -1)
+
         batch = Batch(
-                observations = np.array(obs * batch_size, dtype="float32"), 
+                observations = obs, 
                 actions = np.array(actions * batch_size, dtype="int32"),
                 rewards = np.array(rewards * batch_size, dtype="float32"), 
                 values = np.array(values * batch_size, dtype="float32"), 
@@ -453,7 +470,6 @@ class TestNetwork(unittest.TestCase):
         loss = 100 
         count = 0
         while loss > 1 and count < 100:
-            print("step???")
             metrics = network.train_step(batch, 1e-4)        
             loss = metrics['loss']
             print(">>> " + str(loss))
@@ -462,13 +478,16 @@ class TestNetwork(unittest.TestCase):
         print("[INITIAL]")
         out = network.initial_inference(obs[0])
 
-        print("[RECUR]")
         r_out = out 
         print(r_out.value)
         print(f"reward={r_out.reward}, value={r_out.value}, policy={r_out.policy}")
+
+        print("[RECUR]")
         for a in actions[0]:
             r_out = network.recurrent_inference(r_out.hidden_state, a)
             print(f"reward={r_out.reward}, value={r_out.value}, policy={r_out.policy}")
+
+        assert loss < 30
 
 
 if __name__ == '__main__':
