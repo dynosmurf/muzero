@@ -17,16 +17,20 @@ class Network(Model):
 
     def compile(self, optimizer):
         self.optimizer = optimizer
+        self.reg_weights = tf.concat([ 
+                tf.reshape(v, [-1]) for v in self.trainable_variables
+                if 'bias' not in v.name
+                ], axis=[0])
 
 
     def train_step(self, batch, weight_decay):
 
-        batch_rewards = batch.rewards
-        batch_values = batch.values
-        batch_policy_probs = batch.policy_probs
+        batch_rewards = tf.constant(batch.rewards, name="rewards")
+        batch_values = tf.constant(batch.values, name="values")
+        batch_policy_probs = tf.constant(batch.policy_probs, name="policy")
 
-        observations = tf.Variable(tnp.array(batch.observations), name="observations")
-        actions = tf.Variable(tnp.array(batch.actions), name="actions")
+        observations = tf.constant(batch.observations, name="observations")
+        actions = tf.constant(batch.actions, name="actions")
 
         metrics = self.update_weights(
                 observations,
@@ -39,7 +43,7 @@ class Network(Model):
 
         return metrics
 
-
+    @tf.function
     def update_weights(self, observations_batch, action_batch, reward_batch, value_batch, policy_batch, weight_decay):
 
         batch_size = action_batch.shape[0]
@@ -55,7 +59,6 @@ class Network(Model):
             value_logits, _, policy_logits, hidden_state = self._initial_inference(observations_batch)
 
             grad_weights = [1]
-
 
             # we ignore the first reward as initial_inference doesn't produce a reward
             # we add zeros here so the rollout dim matches between reward, value and policy
@@ -87,18 +90,15 @@ class Network(Model):
             predicted_policy_logits = tf.transpose(tnp.array(predicted_policy_logits), perm=[1, 0, 2])
          
             loss, value_loss, reward_loss, policy_loss = self._loss(
-                    (predicted_value_logits, predicted_reward_logits, predicted_policy_logits),
-                    (value_batch, reward_batch, policy_batch),
+                    predicted_value_logits, predicted_reward_logits, predicted_policy_logits,
+                    value_batch, reward_batch, policy_batch,
                     grad_weights,
                     trainable_vars
                     )
 
-            reg_loss = weight_decay * tf.add_n([ 
-                tf.nn.l2_loss(v) for v in trainable_vars
-                if 'bias' not in v.name
-                ])
+            #reg_loss = weight_decay * tf.reduce_sum(tf.square(self.reg_weights))
 
-            loss = loss + reg_loss
+            #loss = loss + reg_loss
         
         gradients = tape.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
@@ -108,17 +108,14 @@ class Network(Model):
                 'value_loss': value_loss / batch_size,
                 'reward_loss': reward_loss / batch_size,
                 'policy_loss': policy_loss / batch_size,
-                'reg_loss': reg_loss,
+                #'reg_loss': reg_loss,
                 }
 
-
-    def _loss(self, predicted, targets, grad_weights, network_weights):
-
-        value_logits, reward_logits, policy_logits = predicted
-        target_values, target_rewards, target_policies = targets
-
-        # print(f"[PRED] values={value_logits[0]}, rewards={reward_logits[0]}")
-        # print(f"[TARG] values={target_values[0]}, rewards={target_rewards[0]}")
+    @tf.function
+    def _loss(self, 
+            value_logits, reward_logits, policy_logits, 
+            target_values, target_rewards, target_policies,
+            grad_weights, network_weights):
 
         value_loss = tf.nn.softmax_cross_entropy_with_logits(
             encode_support(scale_target(target_values), self.support_size),
@@ -200,7 +197,7 @@ class Network(Model):
                 policy=np.array(policy)[0], 
                 hidden_state=np.array(hidden_state)[0]) 
 
-
+    @tf.function
     def _initial_inference(self, observation_batch):
         """
         Runs inital_inference step on batch of inputs and retuns raw output
@@ -216,6 +213,7 @@ class Network(Model):
         return (value_logits, None, policy_logits, hidden_state)
 
 
+    @tf.function
     def _recurrent_inference(self, hidden_state_batch, action_batch):
         """
         Runs recurrent_inference step on batch of inputs and retuns raw output

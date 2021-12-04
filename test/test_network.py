@@ -40,11 +40,9 @@ class TestNetwork(unittest.TestCase):
                 np.identity(4)
             ]
         ])
-        print(input_batch)
 
         result = dynamics(input_batch)
 
-        print(result)
 
     def _test_representation(self):
         # test 2048 problem
@@ -69,11 +67,9 @@ class TestNetwork(unittest.TestCase):
             ]
         ])
 
-        print(input_batch)
 
         result = representation(input_batch)
 
-        print(result)
                 
     def _test_prediction(self):
         # test 2048 problem
@@ -93,11 +89,9 @@ class TestNetwork(unittest.TestCase):
                 np.arange(2,18).reshape((4,4)),
             ]
         ])
-        print(input_batch)
 
         result = prediction(input_batch)
 
-        print(result)
 
     def _test_res_network(self):
 
@@ -146,8 +140,6 @@ class TestNetwork(unittest.TestCase):
         network.train_step(batch, 0.9)
 
     def _test_fc_network(self):
-
-        print('TensorFlow version: %s' % tf.__version__)
 
         hidden_shape = (3, 4, 4)
         state_shape = (5, 4, 4)
@@ -207,13 +199,13 @@ class TestNetwork(unittest.TestCase):
 
         network.train_step(batch, 0.9)        
 
-    def _test_scale_unscale(self):
+    def test_scale_unscale(self):
 
         e = np.arange(-100, 100, dtype="float32")
         t = unscale_target(scale_target(np.arange(-100, 100, dtype="float32")))
         assert np.allclose(t, e, 0.001) == True
 
-    def _test_encode_support(self):
+    def test_encode_support(self):
 
         e = np.array([
             [0, 0, 0, 0.4, 0.6],
@@ -222,11 +214,9 @@ class TestNetwork(unittest.TestCase):
 
         r = encode_support(np.array([0.4 + 0.6 * 2, -2*.9 - 0.1]), 2)
 
-        print(e, r)
-
         assert np.allclose(r, e) 
 
-    def _test_encode_support_extream(self):
+    def test_encode_support_extream(self):
 
         e = np.array([
             [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -237,14 +227,10 @@ class TestNetwork(unittest.TestCase):
         #    np.arange(-10, 10),
         #]), 10)
 
-        # print(r)
-
         r = encode_support(np.array([
             [-11, 11],
         ]), 10)
 
-        print(r)
-        print(e)
         assert np.allclose(r, e) 
 
     def test_encode_support_0(self):
@@ -259,17 +245,14 @@ class TestNetwork(unittest.TestCase):
         #    np.arange(-10, 10),
         #]), 10)
 
-        # print(r)
 
         r = encode_support(np.array([
             [-0.5, 0, 0.5],
         ]), 2)
 
-        print(r)
-        print(e)
         assert np.allclose(r, e) 
 
-    def _test_decode_support(self):
+    def test_decode_support(self):
 
         t = np.array([
             [0, 0, 0, 0.4, 0.6],
@@ -279,11 +262,9 @@ class TestNetwork(unittest.TestCase):
         r = decode_support(t)
         e = np.array([0.4 + 0.6 * 2, -2*.9 - 0.1]) 
 
-        print(r)
-        print(e)
         assert np.allclose(r, e) 
 
-    def _test_decode_support_3d(self):
+    def test_decode_support_3d(self):
 
         t = np.array([[
                 [0, 0, 0, 0.4, 0.6],
@@ -325,7 +306,7 @@ class TestNetwork(unittest.TestCase):
                 visit_softmax_temperature_fn=lambda i: 1 
                 )
 
-    def _test_train(self):
+    def test_train(self):
 
         state_shape = (4,)
         hidden_shape = (8,)
@@ -374,8 +355,6 @@ class TestNetwork(unittest.TestCase):
                 [0.5, 0.5],
                 [0.5, 0.5],
                 ]]
-
-        print(obs * 2)
 
         batch_size = 128
 

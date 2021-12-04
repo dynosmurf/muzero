@@ -1,4 +1,4 @@
-FROM jupyter/tensorflow-notebook:2021-09-07
+FROM cschranz/gpu-jupyter:v1.4_cuda-11.0_ubuntu-20.04
 
 
 USER root
@@ -43,13 +43,17 @@ RUN pip install \
     atari_py \
     gym[atari] \
     redis \
-    pottery 
+    walrus \
+    msgpack_numpy
+    
+
 
 COPY ./lib/roms /home/jovyan/lib/roms
 
 RUN python -m atari_py.import_roms /home/jovyan/lib/roms 
 
 ENV PYTHONPATH=.:/home/jovyan/working
+ENV TF_CPP_MIN_LOG_LEVEL=2
 
 # Switch back to jovyan to avoid accidental container runs as root
 USER $NB_UID

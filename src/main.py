@@ -86,7 +86,7 @@ def train_network(config, network_storage, replay_buffer):
 
 def get_storage(config):
     # TODO: Move into replay and network_storage classes
-    db = Database(host='muzero-redis', port=6379, db=10)
+    db = Database(host='muzero-redis', port=6379, db=11)
     weights = db.Hash('weights')
     replays = db.List('replays') 
     stats = db.List('stats')

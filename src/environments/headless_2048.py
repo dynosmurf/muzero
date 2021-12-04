@@ -45,7 +45,8 @@ class Headless2048():
         self.size = size
         self.rng = np.random.default_rng(seed)
         self.track_history = track_history
-        self.last_move = None
+
+        self.reset();
 
         if not initial_state is None:
             self.state = initial_state
@@ -58,16 +59,32 @@ class Headless2048():
         self.total_score = 0.0
         self.game_over = False
 
-        if self.track_history:
-            self.history = [(None, np.copy(self.state))] 
+        self.history = [Turn(None, 0, np.copy(self.state), None, False)] 
 
-    def end_game(self):
-        self.game_over = True
+    def reset(self):
+        self.state = np.zeros(shape=(size,size), dtype="uint8")
+        # start with two tiles
+        self._gen_tile()
+        self._gen_tile()
+           
+        self.total_score = 0.0
+        self.game_over = False
 
-    def get_state(self):
-        return self.state
+        self.history = [Turn(None, 0, np.copy(self.state), None, False)] 
 
-    def possible_moves(self):
+    def get_history(self):
+        return self.history
+
+    def get_reward_history(self):
+        return [h.action for h in self.history]
+
+    def get_action_history(self):
+        return [h.action for h in self.history]
+
+    def get_state(self, idx):
+        return self.history[idx].state
+
+    def get_possible_moves(self):
         moves = np.zeros(4)
 
         for r in range(4):
@@ -86,7 +103,17 @@ class Headless2048():
 
         return moves
 
-    def turn(self, move):
+    def is_done(self):
+        return len(self.history) > 0 and self.history[-1].done
+
+    def current_player(self):
+        return 0
+
+    def to_play(self, player, offset):
+        # Single player game
+        return 0
+
+    def step(self, move):
 
         if self.game_over:
             return -1 
@@ -120,14 +147,26 @@ class Headless2048():
         self._gen_tile()
 
         self.last_move = (move, 1, score, np.copy(self.state))
-        if self.history:
-            self.history.append(self.last_move)
 
         pmoves = self.possible_moves()
+
         if np.count_nonzero(pmoves) == 0:
-            self.end_game()
+            self._end_game()
+
+        if self.history:
+            history_entry = Turn(
+                    action=move,
+                    value=0,
+                    state=np.copy(self.state),
+                    reward=score,
+                    done=self.game_over)
+            
+            self.history.append(history_entry)
 
         return score 
+
+    def _end_game(self):
+        self.game_over = True
 
     def _gen_tile(self):
         state = self.state
@@ -140,4 +179,7 @@ class Headless2048():
 
     def __str__(self):
         return str(self.state)
+
+    def __len__(self):
+        return len(self.history)
 

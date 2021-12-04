@@ -65,14 +65,13 @@ def scale_to_0_1(t):
 #    x_scaled = scale_to_0_1(x)
 #    return x_scaled / tnp.sum(x_scaled)
 
-@tf.function(experimental_relax_shapes=True)
+@tf.function
 def scale_target(x):
     """
     "in scaling targets using an invertible transform 
      h(x) = sign(x)(􏰌|x| + 1 − 1 + εx), where ε = 0.001 in all our experiments."
     """
     return tnp.sign(x) * (tnp.sqrt(tnp.abs(x) + 1) - 1) + 0.001*x
-
 
 @tf.function
 def unscale_target(x):
