@@ -88,7 +88,7 @@ class Network(Model):
             predicted_value_logits = tf.transpose(tnp.array(predicted_value_logits), perm=[1, 0, 2])
             predicted_reward_logits = tf.transpose(tnp.array(predicted_reward_logits), perm=[1, 0, 2])
             predicted_policy_logits = tf.transpose(tnp.array(predicted_policy_logits), perm=[1, 0, 2])
-         
+
             loss, value_loss, reward_loss, policy_loss = self._loss(
                     predicted_value_logits, predicted_reward_logits, predicted_policy_logits,
                     value_batch, reward_batch, policy_batch,
@@ -96,9 +96,9 @@ class Network(Model):
                     trainable_vars
                     )
 
-            #reg_loss = weight_decay * tf.reduce_sum(tf.square(self.reg_weights))
+            reg_loss = weight_decay * tf.reduce_sum(tf.square(self.reg_weights))
 
-            #loss = loss + reg_loss
+            loss = loss + reg_loss
         
         gradients = tape.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
@@ -121,6 +121,7 @@ class Network(Model):
             encode_support(scale_target(target_values), self.support_size),
             value_logits
         )
+        tf.print(value_logits[0])
         value_loss = scale_gradient(value_loss, grad_weights)
         value_loss = tf.reduce_sum(value_loss)
 

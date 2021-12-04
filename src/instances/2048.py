@@ -41,6 +41,6 @@ class Headless2048Config(Config):
         return Headless2048()
 
 if __name__ == '__main__':
-    config = CartpoleConfig()
+    config = Headless2048Config()
     muzero(config)
 

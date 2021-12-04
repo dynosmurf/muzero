@@ -17,12 +17,12 @@ def scalar_loss(pred, act):
 
 # Described in nature article
 def conv_block(input_layer):
-    x = Conv2D(256, 3, padding="same")(input_layer)
+    x = Conv2D(16, 3, padding="same")(input_layer)
     x = BatchNormalization()(x)
     return Activation('elu')(x)
 
 
-def residual_block(input_layer, planes=256):
+def residual_block(input_layer, planes=16):
     x = Conv2D(planes, 3, padding="same")(input_layer)
     x = BatchNormalization()(x)
     x = Activation('elu')(x)

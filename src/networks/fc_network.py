@@ -87,19 +87,22 @@ class FCNetwork(Network):
 
         super(Network, self).__init__()
 
-        support_dim = 2*support_size+1
-
-        self.representation = build_representation(state_shape, hidden_state_shape, downsample, hidden_layers, layer_size)
-
-        self.dynamics = build_dynamics(hidden_state_shape, action_space_size, support_dim, hidden_layers, layer_size)
-
-        self.prediction = build_prediction(hidden_state_shape, action_space_size, support_dim, hidden_layers, layer_size)
-
-        self.support_dim = support_dim
         self.support_size = support_size
+        self.support_dim = 2*support_size+1
+
         self.state_shape = state_shape
         self.hidden_state_shape = hidden_state_shape
         self.action_space_size = action_space_size
+
+        # Create sub networks
+        self.representation = build_representation(
+                state_shape, hidden_state_shape, downsample, hidden_layers, layer_size)
+
+        self.dynamics = build_dynamics(
+                hidden_state_shape, action_space_size, self.support_dim, hidden_layers, layer_size)
+
+        self.prediction = build_prediction(
+                hidden_state_shape, action_space_size, self.support_dim, hidden_layers, layer_size)
 
 
 

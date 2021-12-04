@@ -300,13 +300,13 @@ class TestNetwork(unittest.TestCase):
                 batch_size=10,
                 td_steps=10,
                 num_actors=1,
-                lr_init=0.02,
+                lr_init=0.05,
                 lr_decay_steps=1000,
-                lr_decay_rate=0.9,
+                lr_decay_rate=1,
                 visit_softmax_temperature_fn=lambda i: 1 
                 )
 
-    def test_train(self):
+    def test_train_fc(self):
 
         state_shape = (4,)
         hidden_shape = (8,)
@@ -378,6 +378,93 @@ class TestNetwork(unittest.TestCase):
         print("[RECUR]")
         r_out = out 
         print(r_out.value, unscale_target(r_out.value))
+        print(f"reward={r_out.reward}, value={r_out.value}, policy={r_out.policy}")
+        for a in actions[0]:
+            r_out = network.recurrent_inference(r_out.hidden_state, a)
+            print(f"reward={r_out.reward}, value={r_out.value}, policy={r_out.policy}")
+
+    def _test_train_res(self):
+
+        state_shape = (1,4,4)
+        hidden_shape = (1,8,8)
+        action_space_size = 4
+        support_size = 20 
+
+        network = ResNetwork(state_shape, 
+                hidden_shape, 
+                action_space_size, 
+                support_size, 
+                downsample=None, 
+                )
+
+
+        config = self.get_test_config()
+
+        lr_schedule = LRSched(config)
+
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+        network.compile(optimizer)
+
+        # image looks like last k game states
+        obs = [
+                [
+                    [
+                    [0, 0, 1, 2],
+                    [0, 0, 2, 3],
+                    [2, 3, 4, 2],
+                    [0, 1, 1, 1],
+                    ]
+                ]
+            ]
+
+        # actions batch is las k actions
+        actions = [[1, 2, 2, 3, 1, 0, 3, 0, 0, 1]]
+
+        # targets are where things get a bit more complex
+        # Targets are last k (target_value, target_reward, target_policy)
+
+        rewards = [[0, 1, 4, 1, 8, 1, 1, 2, 0, 0, 0]]
+
+        values = [[100, 99, 98, 97, 96, 95, 94, 93, 92, 91, 90]]
+
+        policy_probs = [[
+                [0.1, 0.4, 0.3, 0.2],
+                [0.1, 0.4, 0.3, 0.2],
+                [0.1, 0.4, 0.3, 0.2],
+                [0.1, 0.4, 0.3, 0.2],
+                [0.1, 0.4, 0.3, 0.2],
+                [0.25, 0.25, 0.25, 0.25],
+                [0.8, 0.1, 0.05, 0.05],
+                [0.25, 0.25, 0.25, 0.25],
+                [0.25, 0.25, 0.25, 0.25],
+                [0.25, 0.25, 0.25, 0.25],
+                [0.25, 0.25, 0.25, 0.25],
+                ]]
+
+        batch_size = 128
+
+        batch = Batch(
+                observations = np.array(obs * batch_size, dtype="float32"), 
+                actions = np.array(actions * batch_size, dtype="int32"),
+                rewards = np.array(rewards * batch_size, dtype="float32"), 
+                values = np.array(values * batch_size, dtype="float32"), 
+                policy_probs = np.array(policy_probs * batch_size, dtype="float32"))
+
+        loss = 100 
+        count = 0
+        while loss > 1 and count < 100:
+            print("step???")
+            metrics = network.train_step(batch, 1e-4)        
+            loss = metrics['loss']
+            print(">>> " + str(loss))
+            count += 1
+
+        print("[INITIAL]")
+        out = network.initial_inference(obs[0])
+
+        print("[RECUR]")
+        r_out = out 
+        print(r_out.value)
         print(f"reward={r_out.reward}, value={r_out.value}, policy={r_out.policy}")
         for a in actions[0]:
             r_out = network.recurrent_inference(r_out.hidden_state, a)

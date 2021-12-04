@@ -8,16 +8,16 @@ from typing import Dict, List, Optional
 import tensorflow.experimental.numpy as tnp
 from tensorflow.keras.layers import *
 from src.networks.network import Network
-from src.networks.utils import conv_block, residual_block
+from src.networks.utils import conv_block, residual_block, scale_to_0_1
 
 
-def build_prediction(input_shape, output_dim):
+def build_prediction(input_shape, output_dim, support_dim):
     x_in = Input(shape=input_shape)
 
     x = conv_block(x_in)
 
     # residual tower
-    for i in range(16):
+    for i in range(2):
         x = residual_block(x)
 
     # policy "head"
@@ -25,8 +25,7 @@ def build_prediction(input_shape, output_dim):
     x_policy = BatchNormalization()(x_policy)
     x_policy = Activation('relu')(x_policy)
     x_policy = Flatten()(x_policy)
-    x_policy = Dense(output_dim)(x_policy)
-    policy_out = Activation('softmax')(x_policy)
+    policy_out = Dense(output_dim)(x_policy)
 
     # value "head"
     x_value = Conv2D(1, 1)(x)
@@ -35,13 +34,13 @@ def build_prediction(input_shape, output_dim):
     x_value = Flatten()(x_value)
     x_value = Dense(256)(x_value)
     x_value = Activation('relu')(x_value)
-    x_value = Dense(1)(x_value)
+    x_value = Dense(support_dim)(x_value)
     value_out = Activation('tanh')(x_value)
 
     return Model(x_in, [policy_out, value_out])
 
 
-def build_dynamics(input_shape, hidden_shape):
+def build_dynamics(input_shape, hidden_shape, support_dim, action_space_size):
     """
     Dynamics function takes the last hidden state and an action
     and returns the next hidden state resulting from applying the
@@ -54,12 +53,27 @@ def build_dynamics(input_shape, hidden_shape):
             - next hidden state
             - reward resulting from action
     """
-    x_in = Input(shape=input_shape)
+    state_in = Input(shape=hidden_shape)
+    actions_in = Input(shape=(action_space_size,))
 
-    x = conv_block(x_in)
+    # actions (batch_size, action_space_size)
+    # state (batch_size, ...hidden_state_shape)
+    action_pane = tf.zeros(hidden_shape[-2] * hidden_shape[-1])
+    idx = tf.expand_dims(tnp.arange(action_space_size), -1)
+    pad_size = hidden_shape[-2] * hidden_shape[-1] - action_space_size
+
+    actions_pane = tf.pad(actions_in, [[0, 0], [0, pad_size]])
+    actions_pane = tf.reshape(actions_pane, tf.constant([-1, 1, hidden_shape[-2], hidden_shape[-1]]))
+
+    action_state = tf.concat((state_in, actions_pane), 1)
+
+    # We need to one_hot the actions pad them to be the same as a state pane
+    # then stack them onto the state pane
+
+    x = conv_block(action_state)
 
     # residual tower
-    for i in range(16):
+    for i in range(2):
         x = residual_block(x)
 
     # state "head"
@@ -74,41 +88,44 @@ def build_dynamics(input_shape, hidden_shape):
     x_reward = Conv2D(1, 1)(x)
     x_reward = BatchNormalization()(x_reward)
     x_reward = Activation('relu')(x_reward)
+    x_reward = Flatten()(x_reward)
     x_reward = Dense(256)(x_reward)
     x_reward = Activation('relu')(x_reward)
-    x_reward = Flatten()(x_reward)
-    x_reward = Dense(1)(x_reward)
+    x_reward = Dense(support_dim)(x_reward)
     reward_out = Activation('tanh', name="dynamics_reward")(x_reward)
 
-    return Model(x_in, [hidden_state_out, reward_out])
+    return Model([state_in, actions_in], [hidden_state_out, reward_out])
 
 
 # muzero pg.14
-def build_representation(input_shape, output_shape, downsample=None):
+def build_representation(input_shape, hidden_state_shape, downsample=None):
+
     x_in = Input(shape=input_shape)
 
+    x = x_in
     if downsample != None:
-        x = downsample(x_in)
+        x = downsample(x)
 
     # End of downsample, begin residual tower
-
-    x = conv_block(x_in)
+    x = conv_block(x)
 
     # residual tower
-    for i in range(16):
+    for i in range(2):
         x = residual_block(x)
 
     # state "head"
     x = Conv2D(2, 1)(x)
     x = BatchNormalization()(x)
-    x = Activation('relu')(x)
+    x = Activation('elu')(x)
+
     # TODO: particularly unclear how this was implemented by the authors
     # this should work though
     x = Flatten()(x)
-    x = Dense(np.product(output_shape))(x)
-    hidden_state_out = Reshape(output_shape)(x)
+    x = Dense(np.product(hidden_state_shape))(x)
+    hidden_shape = Reshape(hidden_state_shape)(x)
+    hidden_state_scaled = scale_to_0_1(hidden_shape)
 
-    return Model(x_in, hidden_state_out)
+    return Model(x_in, hidden_state_scaled)
 
 
 def res_network_factory(state_shape, hidden_state_shape, action_space_size, downsample=None):
@@ -117,14 +134,34 @@ def res_network_factory(state_shape, hidden_state_shape, action_space_size, down
 
 class ResNetwork(Network):
 
-    def __init__(self, state_shape, hidden_state_shape, action_space_size, downsample=None):
-        super(Network, self).__init__()
-        dynamics_shape = (1, hidden_state_shape[0] + 1, hidden_state_shape[1], hidden_state_shape[2])
+    def __init__(self, 
+            state_shape, 
+            hidden_state_shape, 
+            action_space_size, 
+            support_size,
+            downsample=None
+            ):
 
-        self.dynamics = build_dynamics(dynamics_shape, hidden_state_shape)
-        self.representation = build_representation(state_shape, hidden_state_shape, downsample)
-        self.prediction = build_prediction(hidden_state_shape, action_space_size)
+        super(Network, self).__init__()
+
+        self.support_dim = 2 * support_size + 1 
+        self.support_size = support_size
 
         self.state_shape = state_shape
         self.hidden_state_shape = hidden_state_shape
         self.action_space_size = action_space_size
+
+        dynamics_shape = (1, hidden_state_shape[0] + 1, hidden_state_shape[1], hidden_state_shape[2])
+
+        # Create sub networks
+
+        self.dynamics = build_dynamics(
+                dynamics_shape, hidden_state_shape, self.support_dim, action_space_size)
+
+        self.representation = build_representation(
+                state_shape, hidden_state_shape, downsample)
+
+        self.prediction = build_prediction(
+                hidden_state_shape, action_space_size, self.support_dim)
+
+
