@@ -49,9 +49,15 @@ class TestMCTS(unittest.TestCase):
     # MCTSNode.expand 
     #------------------------------ 
 
+    def test_node(self):
+
+        n = MCTSNode(1)
+
+
+
     def _test_expand_root(self):
         o = False 
-        network_output = [NetworkOutput(value=10, hidden_state=[[]], reward=1, policy={0: 0.3, 1: 0.7})]
+        network_output = [NetworkOutput(value=10, hidden_state=np.array([[1.1]]), reward=1, policy=np.array([0.3, 0.7]))]
         inst, rng = self.get_test_inst(network_output)
 
         log_notes(o, inst.root.children[0])
@@ -71,8 +77,8 @@ class TestMCTS(unittest.TestCase):
     def _test_expand_level_1(self):
         o = False
         network_output = [
-                NetworkOutput(value=10, hidden_state=[[]], reward=1, policy={0: 0.3, 1: 0.7}),
-                NetworkOutput(value=11, hidden_state=[[]], reward=2, policy={0: 0.8, 1: 0.2})
+                NetworkOutput(value=10, hidden_state=np.array([[1.1]]), reward=1, policy=np.float32([0.3, 0.7])),
+                NetworkOutput(value=11, hidden_state=np.array([[1.1]]), reward=2, policy=np.float32([0.8, 0.2]))
                 ]
         inst, rng = self.get_test_inst(network_output)
 
@@ -81,7 +87,7 @@ class TestMCTS(unittest.TestCase):
 
         self.assertEqual(len(parent.children), 0)
 
-        parent.expand(next_player, [0, 1], network_output[1])
+        parent.expand(next_player, [0, 1], network_output[1].hidden_state, network_output[1].reward, network_output[1].policy)
 
         self.assertEqual(len(parent.children), 2)
 
@@ -103,7 +109,7 @@ class TestMCTS(unittest.TestCase):
     # MCTS.select_child
     #------------------------------ 
 
-    def test_select_child_root(self):
+    def _test_select_child_root(self):
 
         # Should randomly select one of the child nodes from the
         # root
@@ -189,13 +195,13 @@ class TestMCTS(unittest.TestCase):
     # MCTS.add_exploration_noise
     #------------------------------ 
 
-    def test_add_exploration_noise(self):
+    def _test_add_exploration_noise(self):
         o = False 
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
         env.get_possible_moves = lambda : [0,1]
         config = self.get_test_config()
-        network_output = [NetworkOutput(value=10, hidden_state=[[]], reward=1, policy={0: 0.3, 1: 0.7})]
+        network_output = [NetworkOutput(value=10, hidden_state=[[1.1]], reward=1, policy=np.float32([0.3, 0.7]))]
         network = MockNetwork(network_output)
 
         mcts = MonteCarloTreeSearch(config, env, network) 
@@ -220,7 +226,7 @@ class TestMCTS(unittest.TestCase):
     # MCTS.ucb_score
     #------------------------------ 
 
-    def test_ucb_initial(self):
+    def _test_ucb_initial(self):
         """
         With no visits the ucb_score should be zero for each child
         """
@@ -230,12 +236,12 @@ class TestMCTS(unittest.TestCase):
 
         self.assertEqual(root_scores, [0, 0])
 
-    def test_ucb_even_root_branches(self):
+    def _test_ucb_even_root_branches(self):
         o = False 
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
         config = self.get_test_config()
-        n_out_1 = NetworkOutput(value=10, hidden_state=[[]], reward=1, policy={0: 0.5, 1: 0.5})
+        n_out_1 = NetworkOutput(value=10, hidden_state=np.float32([[1.1]]), reward=1, policy=np.float32([0.5, 0.5]))
         network = MockNetwork([n_out_1])
 
         inst = MonteCarloTreeSearch(config, env, network) 
@@ -246,12 +252,12 @@ class TestMCTS(unittest.TestCase):
         
         self.assertEqual(root_scores, [0, 0])
 
-    def test_ucb_uneven_root_branches(self):
+    def _test_ucb_uneven_root_branches(self):
         o = False
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
         config = self.get_test_config()
-        n_out_1 = NetworkOutput(value=10, hidden_state=[], reward=1, policy={0: 0.6, 1: 0.4})
+        n_out_1 = NetworkOutput(value=10, hidden_state=np.float32([[1.1]]), reward=1, policy=np.float32([0.6, 0.4]))
         network = MockNetwork([n_out_1])
 
         inst = MonteCarloTreeSearch(config, env, network) 
@@ -264,18 +270,18 @@ class TestMCTS(unittest.TestCase):
         # If there are no visits the root score should be 0 even if 
         self.assertEqual(root_scores, [0, 0])
 
-    def test_ucb_score_initial(self):
+    def _test_ucb_score_initial(self):
         o = False 
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
         config = self.get_test_config()
-        n_out_1 = NetworkOutput(value=0, hidden_state=[[]], reward=1, policy={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.4})
+        n_out_1 = NetworkOutput(value=0, hidden_state=np.array([[1.1]]), reward=1, policy=np.float32([0, 0.2, 0.3, 0.5]))
         network = MockNetwork([n_out_1])
 
         mcts = MonteCarloTreeSearch(config, env, network) 
 
         parent = MCTSNode(0)
-        parent.expand(0, [1,2], n_out_1)
+        parent.expand(0, [1,2], n_out_1.hidden_state, n_out_1.reward, n_out_1.policy)
 
         log_notes(o, "Parent children: ", [(action, child.prior) for action, child in parent.children.items()])
 
@@ -288,14 +294,14 @@ class TestMCTS(unittest.TestCase):
     # MCTS.execute
     #------------------------------ 
 
-    def test_execute_multiple(self):
+    def _test_execute_multiple(self):
         o = False 
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
         config = self.get_test_config()
         config.action_space_size = 4
-        n_out_1 = NetworkOutput(value=4, hidden_state=[[]], reward=1, policy={0: 0.1, 1: 0.2, 2: 0.3, 3: 0.4})
-        n_out_2 = NetworkOutput(value=3, hidden_state=[[]], reward=0, policy={0: 0.25, 1: 0.25, 2: 0.25, 3: 0.25})
+        n_out_1 = NetworkOutput(value=4, hidden_state=[[1.1]], reward=1, policy=np.float32([0, 0.2, 0.3, 0.5]))
+        n_out_2 = NetworkOutput(value=3, hidden_state=[[1.1]], reward=0, policy=np.float32([0, 0.2, 0.3, 0.5]))
         network = MockNetwork([n_out_1, n_out_2])
 
         mcts = MonteCarloTreeSearch(config, env, network) 
@@ -352,7 +358,7 @@ class TestMCTS(unittest.TestCase):
         log_notes(o, "Value Bounds: {}".format(mcts.value_bounds))
 
 
-    def test_execute_multiple_2(self):
+    def _test_execute_multiple_2(self):
         expected = (
 """
 x:<prior=0, visit_count=4, value_sum=3.9112387827422617, value=0.9778096956855654, reward=-0.0, children=2>
@@ -374,16 +380,17 @@ x:<prior=0, visit_count=4, value_sum=3.9112387827422617, value=0.977809695685565
         
         # line 366261
         outputs = [
-            NetworkOutput(value=0, hidden_state=[[]], reward=0, policy={0: 0.8342013, 1: 0.16579875}),
-            NetworkOutput(value=0.6121330261230469, hidden_state=[[]], reward=0.28712379932403564, policy={0: 0.6420332, 1: 0.35796675}),
-            NetworkOutput(value=0.5946230888366699, hidden_state=[[]], reward=0.1633901596069336, policy={0: 0.6410214, 1: 0.35897863}),
-            NetworkOutput(value=0.5646584033966064, hidden_state=[[]], reward=0.14456570148468018, policy={0: 0.6350399, 1: 0.36496004}),
-            NetworkOutput(value=0.6538723707199097, hidden_state=[[]], reward=0.32829177379608154, policy={0: 0.6486932, 1: 0.3513068})
+            NetworkOutput(value=0, hidden_state=[[1.1]], reward=0, policy={0: 0.8342013, 1: 0.16579875}),
+            NetworkOutput(value=0.6121330261230469, hidden_state=[[1.1]], reward=0.28712379932403564, policy=np.array([0, 0.2, 0.3, 0.5])),
+            NetworkOutput(value=0.5946230888366699, hidden_state=[[1.1]], reward=0.1633901596069336, policy=np.array([0, 0.2, 0.3, 0.5])),
+            NetworkOutput(value=0.5646584033966064, hidden_state=[[1.1]], reward=0.14456570148468018, policy=np.array([0, 0.2, 0.3, 0.5])),
+            NetworkOutput(value=0.6538723707199097, hidden_state=[[1.1]], reward=0.32829177379608154, policy=np.array([0, 0.2, 0.3, 0.5]))
             ]
         network = MockNetwork(outputs) 
 
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
+
 
         mcts = MonteCarloTreeSearch(
                 config, env, network

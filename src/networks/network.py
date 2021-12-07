@@ -110,7 +110,7 @@ class Network(Model):
                 'value_loss': value_loss / batch_size,
                 'reward_loss': reward_loss / batch_size,
                 'policy_loss': policy_loss / batch_size,
-                #'reg_loss': reg_loss,
+                'reg_loss': reg_loss,
                 }
 
     @tf.function

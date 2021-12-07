@@ -5,7 +5,7 @@ class MockNetwork():
     def __init__(self, outputs=None):
         self.iter = 0
         if outputs == None:
-            self.outputs = [NetworkOutput(value=5, reward=1, policy={0: 0.1, 1:0.2, 2:0.3, 3: 0.4}, hidden_state=[[0,self.iter,1]])]
+            self.outputs = [NetworkOutput(value=5, reward=1, policy=np.array([0.1, 0.2, 0.3, 0.4]), hidden_state=[[0,self.iter,1]])]
         else:
             self.outputs = outputs
 

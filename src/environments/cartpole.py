@@ -44,5 +44,12 @@ class CartpoleEnvWrapper():
         self.history.append(history_entry)
         return history_entry 
 
+    def get_metrics(self):
+        metrics = {
+            "value": len(self),
+            "length": len(self)
+            }
+        return metrics
+
     def __len__(self):
         return len(self.history)

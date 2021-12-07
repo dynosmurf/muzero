@@ -106,7 +106,6 @@ class Headless2048():
 
     def get_possible_moves(self):
         out = np.nonzero(self._possible_moves())[0]
-        print("[POSSIBLE]", out)
         return out
 
     def is_done(self):

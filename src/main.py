@@ -2,8 +2,9 @@ import time
 import numpy as np
 from multiprocessing import Pool
 from redis import Redis
-from walrus import *
 import logging
+import tensorflow as tf
+from walrus import Database 
 
 from src.replay_buffer import ReplayBuffer
 from src.network_storage import NetworkStorage
@@ -12,11 +13,19 @@ from src.prof import p, fl
 from src.networks.utils import LRSched
 
 logging.basicConfig(level=logging.INFO)
+physical_devices = tf.config.list_physical_devices('GPU') 
+for device in physical_devices:
+    tf.config.experimental.set_memory_growth(device, True)
 
+# tf.debugging.set_log_device_placement(True)
 
 def run_selfplay(config, replay_buffer, network_storage, test=False):
     import tensorflow as tf
+    writer = tf.summary.create_file_writer(config.get_log_file())
+
     network = config.network_factory()
+
+    logging.info("[WORKER GPU STATUS]" + str(tf.config.list_physical_devices('GPU')))
 
     # wait for a weight set to be made available
     while len(network_storage) == 0:
@@ -32,10 +41,11 @@ def run_selfplay(config, replay_buffer, network_storage, test=False):
             env = config.env_factory()
 
             game_log = play_game(config, network, env, step, test=test)
+            game_metrics = env.get_metrics()
 
-            print(game_log)
+            replay_buffer.save_game(game_log, game_metrics, test)
+            replay_buffer.log_game_metrics(writer, game_metrics, test)
 
-            replay_buffer.save_game(game_log)
             step += 1
 
         except Exception as e:
@@ -43,14 +53,24 @@ def run_selfplay(config, replay_buffer, network_storage, test=False):
 
 
 def log_step(step, metrics, replay_buffer):
-    buffer_info = f"replay_buffer_size={len(replay_buffer)} avg_len={replay_buffer.avg_len(10)} last_len={replay_buffer.last_len()}"
-    train_info = f"loss={metrics['loss']} value_loss={metrics['value_loss']}"
+    buffer_info = f"replay_buffer_size={len(replay_buffer)} avg_len={replay_buffer.avg_stat('length',10)} last_len={replay_buffer.last_stat('length')}"
+    train_info = f"loss={metrics['loss']} v={metrics['value_loss']} r={metrics['reward_loss']} p={metrics['policy_loss']}"
 
     logging.info(f"[{step}] {buffer_info} :: {train_info}")
 
+def log_metrics(writer, step, metrics):
+    with writer.as_default():
+        for key, value in metrics.items():
+            tf.summary.scalar(key, value, step=step)
+        writer.flush()
 
 def train_network(config, network_storage, replay_buffer):
     import tensorflow as tf
+
+    writer = tf.summary.create_file_writer(config.get_log_file())
+
+    logging.info("[GPU STATUS]")
+    logging.info(str(tf.config.list_physical_devices('GPU')))
 
     network = config.network_factory() 
 
@@ -70,14 +90,17 @@ def train_network(config, network_storage, replay_buffer):
     for step in range(config.training_steps):
 
         try:
+            replay_buffer.set_step(step)
 
             if step % config.checkpoint_interval == 0:
+                logging.info("[CHECKPOINT]")
                 network_storage.save_network(step, network)
             
             batch = replay_buffer.sample_batch(config.num_unroll_steps, config.td_steps)
             
             metrics = network.train_step(batch, config.weight_decay)
 
+            log_metrics(writer, step, metrics)
             log_step(step, metrics, replay_buffer)
 
         except Exception as e:
@@ -86,27 +109,30 @@ def train_network(config, network_storage, replay_buffer):
     network_storage.save_network(config.training_steps, network)
 
 
-def get_storage(config):
+def get_storage(config, db_id):
     # TODO: Move into replay and network_storage classes
-    db = Database(host='muzero-redis', port=6379, db=12)
-    weights = db.Hash('weights')
-    replays = db.List('replays') 
-    stats = db.List('stats')
 
-    replay_buffer = ReplayBuffer(config, replays, stats)
-    network_storage = NetworkStorage(config, weights)
+    db = Database(host='muzero-redis', port=6379, db=db_id)
+    replay_buffer = ReplayBuffer(config, db)
+    network_storage = NetworkStorage(config, db)
 
     return replay_buffer, network_storage
 
+def flush_db(db_id):
+    logging.warn("Flushing redis db.")
+    db = Database(host='muzero-redis', port=6379, db=db_id)
+    db.flushdb()
 
-def muzero(config):
+def muzero(config, db_id):
 
     global wrapped_run_selfplay
+
+    config.set_log_file(f"./results/{config.game}-{time.strftime('%Y%m%d-%H%M%S')}.events")
 
     def wrapped_run_selfplay(i, test=False):
         logging.info(f"Starting worker {i}")
 
-        replay_buffer, network_storage = get_storage(config)
+        replay_buffer, network_storage = get_storage(config, db_id)
 
         run_selfplay(config, replay_buffer, network_storage, test)
 
@@ -119,9 +145,7 @@ def muzero(config):
     for i in range(config.num_actors):
         pool.apply_async(wrapped_run_selfplay, [i+1, False])
 
-
-
-    replay_buffer, network_storage = get_storage(config)
+    replay_buffer, network_storage = get_storage(config, db_id)
 
     train_network(config, network_storage, replay_buffer)
 

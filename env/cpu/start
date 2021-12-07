@@ -18,11 +18,12 @@ then
     echo "...already running"; 
 else 
     # Start container
-    docker run --rm -p 8888:8888 -p 6006:6006 \
+    docker run --rm -p 8888:8888 -p 6006:6006 -p 6005:6005 \
       -e JUPYTER_ENABLE_LAB=yes \
       -v "$PWD/../":/home/jovyan/working \
       --name muzero-lab \
       --net muzero-net \
+      --gpus all \
       -d \
       muzero-env-2021:v1.0
 

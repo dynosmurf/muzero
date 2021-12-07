@@ -2,6 +2,8 @@ import numpy as np
 from dataclasses import dataclass
 import msgpack
 import msgpack_numpy as m
+from walrus import Database 
+import tensorflow as tf
 
 from src.game import GameLog
 from src.data_classes import Batch
@@ -20,34 +22,50 @@ def normalize(l):
 
 class ReplayBuffer(object):
 
-    def __init__(self, config, shared_buffer, stats):
+    def __init__(self, config, db):
+        self.db = db
         self.config = config
         self.window_size = config.window_size
         self.batch_size = config.batch_size
-        self.buffer = shared_buffer
-        self.stats = stats
+        self.buffer = self.db.List('replays')
+        self.stats = self.db.List('stats')
+        self.db['step'] = 0
 
-
-    def save_game(self, game):
+    def save_game(self, game, game_metrics, is_test):
         if len(self.buffer) > self.window_size:
             self.buffer.popleft()
             self.stats.popleft()
         self.buffer.append(msgpack.packb(game.serialize()))
-        self.stats.append(len(game)) 
+        self.stats.append(msgpack.packb(game_metrics))
 
 
-    def avg_len(self, length=None):
+    def set_step(self, step):
+        self.db['step'] = step
+
+
+    def log_game_metrics(self, writer, metrics, is_test):
+        step = int(self.db['step'])
+        with writer.as_default():
+            for key, value in metrics.items():
+                if is_test:
+                    tf.summary.scalar('test-'+key, value, step=step)
+                else:
+                    tf.summary.scalar(key, value, step=step)
+                writer.flush()
+
+
+    def avg_stat(self, key, length=None):
         if len(self) == 0:
             return 0
         elif length is None:
-            return np.mean([int(s) for s in self.stats])
+            return np.mean([int(msgpack.unpackb(s)[key]) for s in self.stats])
         else:
-            stats = [int(s) for s in self.stats]
+            stats = [int(msgpack.unpackb(s)[key]) for s in self.stats]
             return np.mean(np.array(stats)[len(stats) - length:])
 
 
-    def last_len(self):
-        return int(self.stats[-1])
+    def last_stat(self, key):
+        return int(msgpack.unpackb(self.stats[-1])[key])
 
 
     def sample_batch(self, num_unroll_steps, td_steps):

@@ -1,5 +1,6 @@
 import msgpack
 import msgpack_numpy as m
+from walrus import Database 
 
 # needed for msgpack_numpy to work correctly
 m.patch()
@@ -7,8 +8,9 @@ m.patch()
 
 class NetworkStorage():
 
-    def __init__(self, config, shared_dict):
-        self._networks = shared_dict 
+    def __init__(self, config, db):
+        self.db = db 
+        self._networks = self.db.Hash('weights') 
         self.config = config
 
 

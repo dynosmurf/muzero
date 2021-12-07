@@ -8,7 +8,7 @@ def softmax_sample(counts, actions, temp):
         return counts[i], actions[i]
      
     p = 1/temp
-    powers = counts**p
+    powers = counts**p + 0.00000001
     total_sum = np.sum(powers)
     probabilities = powers / total_sum
     i = np.argmax(np.random.multinomial(1, probabilities, 1))

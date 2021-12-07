@@ -37,7 +37,7 @@ class MCTSNode():
 
         # set child priors scaled to be valid probability distribution
         for i, action in enumerate(actions):
-            self.children[action] = MCTSNode(0.5) #network_output.policy[i])
+            self.children[action] = MCTSNode(network_output.policy[action])
 
 
     def __str__(self):
@@ -86,7 +86,6 @@ class MonteCarloTreeSearch():
         legal_actions = env.get_possible_moves()
 
         self.root.expand(self.to_play, legal_actions, network_output)
-        print("[INIT]", self.root.children.keys())
         self.add_exploration_noise(self.root)
 
 

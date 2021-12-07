@@ -12,16 +12,16 @@ from src.networks.utils import conv_block, residual_block, dense_block, scale_to
 
 
 def build_prediction(input_shape, output_dim, support_dim):
-    layer_size = 16
-    value_fc_layers = 1
-    policy_fc_layers = 1
+    layer_size = 64 
+    value_fc_layers = 2
+    policy_fc_layers = 2
 
     x_in = Input(shape=input_shape)
 
     x = x_in # conv_block(x_in)
 
     # residual tower
-    for i in range(2):
+    for i in range(8):
         x = residual_block(x)
 
     # policy "head"
@@ -58,8 +58,8 @@ def build_dynamics(input_shape, hidden_shape, support_dim, action_space_size):
             - next hidden state
             - reward resulting from action
     """
-    reward_fc_layers = 1
-    layer_size = 16
+    reward_fc_layers = 2
+    layer_size = 64 
 
     state_in = Input(shape=hidden_shape)
     actions_in = Input(shape=(action_space_size,))
@@ -81,7 +81,7 @@ def build_dynamics(input_shape, hidden_shape, support_dim, action_space_size):
     x = conv_block(action_state)
 
     # residual tower
-    for i in range(3):
+    for i in range(8):
         x = residual_block(x)
 
     # state "head"
@@ -120,7 +120,7 @@ def build_representation(input_shape, hidden_state_shape, downsample=None):
     x = conv_block(x)
 
     # residual tower
-    for i in range(2):
+    for i in range(8):
         x = residual_block(x)
 
     # state "head"

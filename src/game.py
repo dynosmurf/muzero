@@ -1,5 +1,6 @@
 import numpy as np
 from dataclasses import dataclass
+import logging
 
 from src.prof import p, fl
 from src.mcts import MonteCarloTreeSearch
@@ -27,14 +28,16 @@ def play_game(config, network, env, step, test=False):
 
         action = mcts.select_action(temp)
 
-        print("[ACTION] ", action) 
+        # print("[ACTION] ", action) 
+        # print(mcts)
 
         result = env.step(action)
 
         log.update(result, mcts.get_root_visits(), mcts.get_root_value()) 
         
-    # if test:
-    #    print(f"[TEST RESULT] %%%%#### steps={len(env.history)} ####%%%%")      
+    if test:
+        stats = env.get_metrics();
+        logging.info(f"[TEST RESULT] %%%%#### steps={stats['length']} score={stats['value']} ####%%%%")      
 
     return log
 
@@ -60,7 +63,6 @@ class GameLog():
         return len(self.history)
 
     def serialize(self):
-        print(self.history)
         return ([
                 (t.action, t.reward, t.state, t.value, t.done) 
                 for t in self.history
