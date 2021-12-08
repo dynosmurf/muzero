@@ -1,4 +1,4 @@
-from numba import types    # import the types
+from numba import types
 from numba.experimental import jitclass
 
 import numpy as np
@@ -6,6 +6,17 @@ import math
 
 from src.prof import p, fl
 from src.util import softmax_sample
+
+
+def update_min_max(min_max_tuple, value):
+    return (min(min_max_tuple[0], value), max(min_max_tuple[1], value))
+
+
+def normalize(min_max_tuple, value):
+    if min_max_tuple[1] > min_max_tuple[0]:
+        return (value - min_max_tuple[0]) / (min_max_tuple[1] - min_max_tuple[0])
+    else:
+        return value
 
 
 class MCTSNode():
@@ -37,7 +48,7 @@ class MCTSNode():
 
         # set child priors scaled to be valid probability distribution
         for i, action in enumerate(actions):
-            self.children[action] = MCTSNode(network_output.policy[action])
+            self.children[action] = MCTSNode(1 / len(actions))
 
 
     def __str__(self):
@@ -52,17 +63,6 @@ class MCTSNode():
 
     def value(self):
         return 0.0 if self.visit_count == 0 else float(self.value_sum / self.visit_count)
-
-
-def update_min_max(min_max_tuple, value):
-    return (min(min_max_tuple[0], value), max(min_max_tuple[1], value))
-
-
-def normalize(min_max_tuple, value):
-    if min_max_tuple[1] > min_max_tuple[0]:
-        return (value - min_max_tuple[0]) / (min_max_tuple[1] - min_max_tuple[0])
-    else:
-        return value
 
 
 class MonteCarloTreeSearch():
@@ -143,7 +143,6 @@ class MonteCarloTreeSearch():
         of the node and it's children
         """
         
-        # TODO: clean this up
         actions = list(node.children.keys())
         scores = [self.ucb_score(node, node.children[a]) for a in actions]
         max_score = np.max(scores)
@@ -194,7 +193,8 @@ class MonteCarloTreeSearch():
             node.value_sum += value
             node.visit_count += 1
 
-            self.value_bounds = update_min_max(self.value_bounds, node.reward + self.config.discount * node.value())
+            self.value_bounds = update_min_max(
+                    self.value_bounds, node.reward + self.config.discount * node.value())
 
             value = node.reward + self.config.discount * value
 

@@ -54,8 +54,7 @@ class TestMCTS(unittest.TestCase):
         n = MCTSNode(1)
 
 
-
-    def _test_expand_root(self):
+    def test_expand_root(self):
         o = False 
         network_output = [NetworkOutput(value=10, hidden_state=np.array([[1.1]]), reward=1, policy=np.array([0.3, 0.7]))]
         inst, rng = self.get_test_inst(network_output)
@@ -64,17 +63,16 @@ class TestMCTS(unittest.TestCase):
         log_notes(o, inst.root.children[1])
         child1, child2 = (inst.root.children[0], inst.root.children[1])
         
-        self.assertEqual(child1.prior, 0.4743108534070385)
         self.assertEqual(child1.visit_count, 0)
         self.assertEqual(child1.value(), 0)
         self.assertEqual(child1.reward, 0)
 
-        self.assertEqual(child2.prior, 0.5256891465929614)
         self.assertEqual(child2.visit_count, 0)
         self.assertEqual(child2.value(), 0)
         self.assertEqual(child2.reward, 0)
 
-    def _test_expand_level_1(self):
+
+    def test_expand_level_1(self):
         o = False
         network_output = [
                 NetworkOutput(value=10, hidden_state=np.array([[1.1]]), reward=1, policy=np.float32([0.3, 0.7])),
@@ -87,7 +85,7 @@ class TestMCTS(unittest.TestCase):
 
         self.assertEqual(len(parent.children), 0)
 
-        parent.expand(next_player, [0, 1], network_output[1].hidden_state, network_output[1].reward, network_output[1].policy)
+        parent.expand(next_player, [0, 1], network_output[1])
 
         self.assertEqual(len(parent.children), 2)
 
@@ -95,12 +93,12 @@ class TestMCTS(unittest.TestCase):
 
         self.assertEqual(parent.reward, 2)
 
-        self.assertEqual(child1.prior, 0.8)
+        self.assertEqual(child1.prior, 0.5)
         self.assertEqual(child1.visit_count, 0)
         self.assertEqual(child1.value(), 0)
         self.assertEqual(child1.reward, 0)
 
-        self.assertEqual(child2.prior, 0.2)
+        self.assertEqual(child2.prior, 0.5)
         self.assertEqual(child2.visit_count, 0)
         self.assertEqual(child2.value(), 0)
         self.assertEqual(child2.reward, 0)
@@ -109,7 +107,7 @@ class TestMCTS(unittest.TestCase):
     # MCTS.select_child
     #------------------------------ 
 
-    def _test_select_child_root(self):
+    def test_select_child_root(self):
 
         # Should randomly select one of the child nodes from the
         # root
@@ -131,13 +129,13 @@ class TestMCTS(unittest.TestCase):
             log_notes(o, f"count_a={count_a}, count_b={count_b}")
             log_notes(o, f"{np.mean(samples)} vs {count_b / 50}")
             log_notes(o, err)
-            self.assertLess(err, 0.01)
+            self.assertLess(err, 0.02)
 
     #
     # MCTS.select_action
     #------------------------------ 
 
-    def _test_select_action_temp_1(self):
+    def test_select_action_temp_1(self):
         """
         When temp = 1 should select actions using a probability
         distribution equal to the visit_count of each child over
@@ -163,7 +161,7 @@ class TestMCTS(unittest.TestCase):
             log_notes(o, err)
             self.assertLess(err, 0.01)
 
-    def _test_select_action_temp_0(self):
+    def test_select_action_temp_0(self):
         """
         When temp = 0 should greedily select actions only
         from the child with the most visits.
@@ -195,7 +193,7 @@ class TestMCTS(unittest.TestCase):
     # MCTS.add_exploration_noise
     #------------------------------ 
 
-    def _test_add_exploration_noise(self):
+    def test_add_exploration_noise(self):
         o = False 
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
@@ -213,20 +211,20 @@ class TestMCTS(unittest.TestCase):
         log_notes(o, "Possible moves: ", possible_moves)
 
         policy = network.initial_inference(env.get_state(-1)).policy
-        log_notes(o, "Network output policy: ", policy.values())
+        log_notes(o, "Network output policy: ", policy)
 
         root_child_priors = [child.prior for action, child in mcts.root.children.items()]
         log_notes(o, "After noise: ", root_child_priors)
 
         assert np.sum(root_child_priors) - 1 < 10**-8
-        assert not np.allclose(root_child_priors, list(policy.values())) 
+        assert not np.allclose(root_child_priors, list(policy)) 
 
 
     #
     # MCTS.ucb_score
     #------------------------------ 
 
-    def _test_ucb_initial(self):
+    def test_ucb_initial(self):
         """
         With no visits the ucb_score should be zero for each child
         """
@@ -236,7 +234,7 @@ class TestMCTS(unittest.TestCase):
 
         self.assertEqual(root_scores, [0, 0])
 
-    def _test_ucb_even_root_branches(self):
+    def test_ucb_even_root_branches(self):
         o = False 
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
@@ -252,7 +250,7 @@ class TestMCTS(unittest.TestCase):
         
         self.assertEqual(root_scores, [0, 0])
 
-    def _test_ucb_uneven_root_branches(self):
+    def test_ucb_uneven_root_branches(self):
         o = False
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
@@ -270,7 +268,7 @@ class TestMCTS(unittest.TestCase):
         # If there are no visits the root score should be 0 even if 
         self.assertEqual(root_scores, [0, 0])
 
-    def _test_ucb_score_initial(self):
+    def test_ucb_score_initial(self):
         o = False 
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
@@ -281,7 +279,7 @@ class TestMCTS(unittest.TestCase):
         mcts = MonteCarloTreeSearch(config, env, network) 
 
         parent = MCTSNode(0)
-        parent.expand(0, [1,2], n_out_1.hidden_state, n_out_1.reward, n_out_1.policy)
+        parent.expand(0, [1,2], n_out_1)
 
         log_notes(o, "Parent children: ", [(action, child.prior) for action, child in parent.children.items()])
 
@@ -294,7 +292,7 @@ class TestMCTS(unittest.TestCase):
     # MCTS.execute
     #------------------------------ 
 
-    def _test_execute_multiple(self):
+    def test_execute_multiple(self):
         o = False 
         rng = np.random.default_rng(2021)
         env = MockEnvWrapper(rng)
@@ -358,27 +356,12 @@ class TestMCTS(unittest.TestCase):
         log_notes(o, "Value Bounds: {}".format(mcts.value_bounds))
 
 
-    def _test_execute_multiple_2(self):
-        expected = (
-"""
-x:<prior=0, visit_count=4, value_sum=3.9112387827422617, value=0.9778096956855654, reward=-0.0, children=2>
- 0:<prior=0.6285985525662817, visit_count=1, value_sum=0.6538723707199097, value=0.6538723707199097, reward=0.32829177379608154, children=2>
-  0:<prior=0.6487066149711609, visit_count=0, value_sum=0, value=0, reward=0, children=0>
-  1:<prior=0.3512933552265167, visit_count=0, value_sum=0, value=0, reward=0, children=0>
- 1:<prior=0.37140149213720186, visit_count=3, value_sum=2.075892534971237, value=0.6919641783237457, reward=0.28712379932403564, children=2>
-  0:<prior=0.6420465707778931, visit_count=1, value_sum=0.5946230888366699, value=0.5946230888366699, reward=0.1633901596069336, children=2>
-   0:<prior=0.6410180330276489, visit_count=0, value_sum=0, value=0, reward=0, children=0>
-   1:<prior=0.3589819371700287, visit_count=0, value_sum=0, value=0, reward=0, children=0>
-  1:<prior=0.3579534888267517, visit_count=1, value_sum=0.5646584033966064, value=0.5646584033966064, reward=0.14456570148468018, children=2>
-   0:<prior=0.6350407004356384, visit_count=0, value_sum=0, value=0, reward=0, children=0>
-   1:<prior=0.36495935916900635, visit_count=0, value_sum=0, value=0, reward=0, children=0>
-""")
+    def test_execute_multiple_2(self):
+
         config = self.get_test_config()
 
         action_history = [1,2,3,0,1]
 
-        
-        # line 366261
         outputs = [
             NetworkOutput(value=0, hidden_state=[[1.1]], reward=0, policy={0: 0.8342013, 1: 0.16579875}),
             NetworkOutput(value=0.6121330261230469, hidden_state=[[1.1]], reward=0.28712379932403564, policy=np.array([0, 0.2, 0.3, 0.5])),
@@ -413,9 +396,6 @@ x:<prior=0, visit_count=4, value_sum=3.9112387827422617, value=0.977809695685565
 
         mcts.execute(4)
 
-        # self.maxDiff = None
-        # self.assertEqual(str(mcts), expected)
-
         self.assertEqual(mcts.root.value_sum, 3.9112387827422617)
         self.assertEqual(mcts.root.children[0].value_sum, 0.6538723707199097)
         self.assertEqual(mcts.root.children[1].value_sum, 2.075892534971237)
@@ -423,8 +403,6 @@ x:<prior=0, visit_count=4, value_sum=3.9112387827422617, value=0.977809695685565
         self.assertEqual(mcts.root.children[0].visit_count, 1)
         self.assertEqual(mcts.root.children[1].visit_count, 3)
 
+
 if __name__ == '__main__':
     unittest.main()
-
-
-

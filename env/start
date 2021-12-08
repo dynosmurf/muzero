@@ -4,10 +4,10 @@
 cd "$(dirname "$(realpath "$0")")";
 
 # Move up to project root 
-cd ../../
+cd ../
 
 echo "[BUILDING IMAGE]\n";
-docker build --tag muzero-env-2021:v1.0 -f env/cpu/Dockerfile . > /dev/null
+docker build --tag muzero-env-2021:v1.0 -f env/Dockerfile . > /dev/null
 
 echo "\n[STARTING CONTAINER]\n";
 
@@ -23,16 +23,9 @@ else
       -v "$PWD/../":/home/jovyan/working \
       --name muzero-lab \
       --net muzero-net \
-      --gpus all \
       -d \
       muzero-env-2021:v1.0
 
-    # Wait for container to start up
-    while ! docker logs muzero-lab 2>&1 | grep "token" 
-    do
-      echo "..."
-      sleep 1;
-    done
     echo "...started"; 
 fi
 
@@ -49,17 +42,4 @@ else
       redis redis-server --save 60 1 --loglevel warning
 fi
 
-TOKEN=$(docker logs muzero-lab 2>&1 | egrep -o -m 1 'token=\w+');
-
-while getopts ":o" opt; do
-  case ${opt} in
-    o )
-        echo "...opening in browser"; 
-        python -m webbrowser http://localhost:8888?$TOKEN
-      ;;
-    \? )
-      ;;
-  esac
-done
-
-echo "...visit: http://localhost:8888?$TOKEN\n";
+echo "...visit: http://localhost:8888\n";

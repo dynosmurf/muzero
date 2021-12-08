@@ -1,3 +1,0 @@
-docker stop ebay-ml-lab && echo "Container stopped succesfully."
-docker stop ebay-ml-db && echo "DB stopped succesfully."
-docker network rm ebay-ml-net && echo "Network removed."

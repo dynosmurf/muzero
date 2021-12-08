@@ -1,4 +1,5 @@
 from src.networks.network import NetworkOutput
+import numpy as np
 
 class MockNetwork():
 

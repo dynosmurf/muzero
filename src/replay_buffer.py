@@ -15,6 +15,7 @@ m.patch()
 def random_action(action_space_size):
     return np.random.choice(list(range(action_space_size)))
 
+
 def normalize(l):
     t = np.sum(l, axis=-1)
     return l / t
@@ -30,6 +31,7 @@ class ReplayBuffer(object):
         self.buffer = self.db.List('replays')
         self.stats = self.db.List('stats')
         self.db['step'] = 0
+
 
     def save_game(self, game, game_metrics, is_test):
         if len(self.buffer) > self.window_size:
@@ -148,7 +150,6 @@ class ReplayBuffer(object):
             bootstrap_index = i + td_steps
 
             if bootstrap_index < len(game.root_values):
-                ## TODO: source
                 value = game.root_values[bootstrap_index] * discount**td_steps
             else:
                 value = 0

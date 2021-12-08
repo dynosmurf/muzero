@@ -1,7 +1,0 @@
-#! /bin/sh
-
-cd "$(dirname "$(realpath "$0")")";
-
-docker ps | grep -q "ebay-ml-lab" || ./start;
-docker exec -it --privileged -w /home/jovyan/working ebay-ml-lab bash;
-

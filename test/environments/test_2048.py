@@ -6,11 +6,12 @@ from src.prof import profile
 
 class Test2048(unittest.TestCase):
 
-    def _test_init(self):
+    def test_init(self):
         g = Headless2048(2, seed=2021, track_history=True)
 
-        expected = np.array([[0, 0],[2, 4]])
+        expected = np.array([[2, 0],[2, 0]])
         assert(np.array_equal(g.state, expected))
+
 
     def _test_move(self):
         g = Headless2048(2, seed=2021, track_history=True)
@@ -41,6 +42,7 @@ class Test2048(unittest.TestCase):
         assert(np.array_equal(g.state, expected))
         assert(g.total_score == 4 + 8 + 4)        
 
+
     def _test_end(self):
 
         initial = np.array([[16, 32],[0, 8]])
@@ -53,6 +55,7 @@ class Test2048(unittest.TestCase):
         assert(np.array_equal(g.state, expected))
         assert(g.game_over == True)
 
+
     def test_rand(self):
 
         g = Headless2048(4, seed=2021, track_history=True)
@@ -62,13 +65,9 @@ class Test2048(unittest.TestCase):
         while g.game_over == False:
             move = rng.choice(moves, 1)[0]
             g.step(move)
-
-        assert(len(g.history) == 194)
-        assert(g.total_score == 1444)
-
-#    def test_prof(self):
-#        wrapped_test = profile(self._test_rand, 'cpu')
-#        wrapped_test()
+        
+        assert(len(g.history) == 57)
+        assert(g.total_score == 168.0)
 
 
 if __name__ == '__main__':

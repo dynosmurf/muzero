@@ -1,5 +1,5 @@
 from src.config import Config
-from src.main import muzero
+from src.main import muzero, flush_db
 from src.environments.headless_2048 import Headless2048 
 from src.mcts import MonteCarloTreeSearch
 from src.networks.res_network import ResNetwork
@@ -40,6 +40,8 @@ class Headless2048Config(Config):
         return Headless2048(4)
 
 if __name__ == '__main__':
+    db_id = 2
     config = Headless2048Config()
-    muzero(config)
+    flush_db(db_id)
+    muzero(config, db_id)
 

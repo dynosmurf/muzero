@@ -85,15 +85,7 @@ def build_dynamics(input_shape, hidden_shape, support_dim, action_space_size):
         x = residual_block(x)
 
     # state "head"
-    #x_state = Conv2D(2, 1)(x)
-    #x_state = BatchNormalization()(x_state)
-    #x_state = Activation('relu')(x_state)
-
     hidden_state_scaled = scale_to_0_1(x)
-
-    #x_state = Flatten()(x_state)
-    #x_state = Dense(np.product(hidden_shape))(x_state)
-    #hidden_state_out = Reshape(hidden_shape, name="dynamics_hidden_state")(x_state)
 
     # reward "head"
     x_reward = Conv2D(1, 1)(x)
@@ -124,15 +116,6 @@ def build_representation(input_shape, hidden_state_shape, downsample=None):
         x = residual_block(x)
 
     # state "head"
-    #x = Conv2D(2, 1)(x)
-    #x = BatchNormalization()(x)
-    #x = Activation('elu')(x)
-
-    # TODO: particularly unclear how this was implemented by the authors
-    # this should work though
-    #x = Flatten()(x)
-    #x = Dense(np.product(hidden_state_shape))(x)
-    # hidden_shape = Reshape(hidden_state_shape)(x)
     hidden_state_scaled = scale_to_0_1(x)
 
     return Model(x_in, hidden_state_scaled)

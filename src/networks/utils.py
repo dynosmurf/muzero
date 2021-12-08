@@ -61,10 +61,6 @@ def scale_to_0_1(t):
     return (t -  tf.reduce_min(t)) / (tf.reduce_max(t) - tf.reduce_min(t))
 
 
-#def to_prob(x):
-#    x_scaled = scale_to_0_1(x)
-#    return x_scaled / tnp.sum(x_scaled)
-
 @tf.function
 def scale_target(x):
     """

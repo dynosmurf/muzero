@@ -28,9 +28,6 @@ def play_game(config, network, env, step, test=False):
 
         action = mcts.select_action(temp)
 
-        # print("[ACTION] ", action) 
-        # print(mcts)
-
         result = env.step(action)
 
         log.update(result, mcts.get_root_visits(), mcts.get_root_value()) 

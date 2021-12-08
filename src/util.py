@@ -14,7 +14,3 @@ def softmax_sample(counts, actions, temp):
     i = np.argmax(np.random.multinomial(1, probabilities, 1))
     return probabilities[i], actions[i]   
 
-
-
-
-

@@ -17,10 +17,6 @@ class Network(Model):
 
     def compile(self, optimizer):
         self.optimizer = optimizer
-        self.reg_weights = tf.concat([ 
-                tf.reshape(v, [-1]) for v in self.trainable_variables
-                if 'bias' not in v.name
-                ], axis=[0])
 
 
     def train_step(self, batch, weight_decay):
@@ -32,6 +28,11 @@ class Network(Model):
         observations = tf.constant(batch.observations, name="observations")
         actions = tf.constant(batch.actions, name="actions")
 
+        self.reg_weights = tf.concat([ 
+                tf.reshape(v, [-1]) for v in self.trainable_variables
+                if 'bias' not in v.name
+                ], axis=[0])
+
         metrics = self.update_weights(
                 observations,
                 actions, 
@@ -42,6 +43,7 @@ class Network(Model):
                 )
 
         return metrics
+
 
     @tf.function
     def update_weights(self, observations_batch, action_batch, reward_batch, value_batch, policy_batch, weight_decay):
@@ -62,7 +64,8 @@ class Network(Model):
 
             # we ignore the first reward as initial_inference doesn't produce a reward
             # we add zeros here so the rollout dim matches between reward, value and policy
-            predicted_reward_logits = [encode_support(tnp.zeros((batch_size,), dtype="float32"), self.support_size)]
+            predicted_reward_logits = [
+                    encode_support(tnp.zeros((batch_size,), dtype="float32"), self.support_size)]
             predicted_value_logits = [value_logits]
             predicted_policy_logits = [policy_logits]
 
@@ -98,20 +101,25 @@ class Network(Model):
                     trainable_vars
                     )
 
-            reg_loss = weight_decay * tf.reduce_sum(tf.square(self.reg_weights))
+            reg_loss = 0
+            for v in self.trainable_variables:
+                if 'bias' not in v.name:
+                    reg_loss += weight_decay * tf.reduce_sum(tf.square(v))
 
+            loss = loss / batch_size
             loss = loss + reg_loss
         
         gradients = tape.gradient(loss, trainable_vars)
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
         return {
-                'loss': loss / batch_size,
+                'loss': loss,
                 'value_loss': value_loss / batch_size,
                 'reward_loss': reward_loss / batch_size,
                 'policy_loss': policy_loss / batch_size,
                 'reg_loss': reg_loss,
                 }
+
 
     @tf.function
     def _loss(self, 
@@ -198,6 +206,7 @@ class Network(Model):
                 reward=np.array(reward)[0], 
                 policy=np.array(policy)[0], 
                 hidden_state=np.array(hidden_state)[0]) 
+
 
     def _initial_inference(self, observation_batch):
         """

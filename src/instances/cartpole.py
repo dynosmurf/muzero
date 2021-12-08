@@ -31,7 +31,11 @@ class CartpoleConfig(Config):
         self.game = "cartpole"
 
     def network_factory(self):
-        return FCNetwork(self.input_shape, self.hidden_state_shape, self.action_space_size, self.support_size,
+        return FCNetwork(
+                self.input_shape, 
+                self.hidden_state_shape, 
+                self.action_space_size, 
+                self.support_size,
                 downsample=None, hidden_layers=1, layer_size=16)
 
     def env_factory(self):

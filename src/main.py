@@ -17,7 +17,6 @@ physical_devices = tf.config.list_physical_devices('GPU')
 for device in physical_devices:
     tf.config.experimental.set_memory_growth(device, True)
 
-# tf.debugging.set_log_device_placement(True)
 
 def run_selfplay(config, replay_buffer, network_storage, test=False):
     import tensorflow as tf
@@ -43,7 +42,9 @@ def run_selfplay(config, replay_buffer, network_storage, test=False):
             game_log = play_game(config, network, env, step, test=test)
             game_metrics = env.get_metrics()
 
-            replay_buffer.save_game(game_log, game_metrics, test)
+            if not test:
+                replay_buffer.save_game(game_log, game_metrics, False)
+
             replay_buffer.log_game_metrics(writer, game_metrics, test)
 
             step += 1
@@ -58,11 +59,13 @@ def log_step(step, metrics, replay_buffer):
 
     logging.info(f"[{step}] {buffer_info} :: {train_info}")
 
+
 def log_metrics(writer, step, metrics):
     with writer.as_default():
         for key, value in metrics.items():
             tf.summary.scalar(key, value, step=step)
         writer.flush()
+
 
 def train_network(config, network_storage, replay_buffer):
     import tensorflow as tf
@@ -74,7 +77,6 @@ def train_network(config, network_storage, replay_buffer):
 
     network = config.network_factory() 
 
-    # TODO: encapsulate
     lr_schedule = LRSched(config)
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
@@ -118,10 +120,12 @@ def get_storage(config, db_id):
 
     return replay_buffer, network_storage
 
+
 def flush_db(db_id):
     logging.warn("Flushing redis db.")
     db = Database(host='muzero-redis', port=6379, db=db_id)
     db.flushdb()
+
 
 def muzero(config, db_id):
 
