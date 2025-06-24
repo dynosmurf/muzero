@@ -1,9 +1,9 @@
-from src.config import Config
-from src.main import muzero, flush_db
-from src.environments.headless_2048 import Headless2048 
-from src.mcts import MonteCarloTreeSearch
-from src.networks.res_network import ResNetwork
-from src.prof import profile
+from muzero.config import Config
+from muzero.main import muzero, flush_db
+from muzero.environments.headless_2048 import Headless2048 
+from muzero.mcts import MonteCarloTreeSearch
+from muzero.networks.res_network import ResNetwork
+from muzero.prof import profile
 
 class Headless2048Config(Config):
 

@@ -6,11 +6,11 @@ import logging
 import tensorflow as tf
 from walrus import Database 
 
-from src.replay_buffer import ReplayBuffer
-from src.network_storage import NetworkStorage
-from src.game import play_game
-from src.prof import p, fl
-from src.networks.utils import LRSched
+from muzero.replay_buffer import ReplayBuffer
+from muzero.network_storage import NetworkStorage
+from muzero.game import play_game
+from muzero.prof import p, fl
+from muzero.networks.utils import LRSched
 
 logging.basicConfig(level=logging.INFO)
 physical_devices = tf.config.list_physical_devices('GPU') 
@@ -114,7 +114,7 @@ def train_network(config, network_storage, replay_buffer):
 def get_storage(config, db_id):
     # TODO: Move into replay and network_storage classes
 
-    db = Database(host='muzero-redis', port=6379, db=db_id)
+    db = Database(host='0.0.0.0', port=6379, db=db_id)
     replay_buffer = ReplayBuffer(config, db)
     network_storage = NetworkStorage(config, db)
 
@@ -123,35 +123,31 @@ def get_storage(config, db_id):
 
 def flush_db(db_id):
     logging.warn("Flushing redis db.")
-    db = Database(host='muzero-redis', port=6379, db=db_id)
+    db = Database(host='0.0.0.0', port=6379, db=db_id)
     db.flushdb()
 
+def wrapped_run_selfplay(i, test, config, db_id):
+    logging.info(f"Starting worker {i}")
+    replay_buffer, network_storage = get_storage(config, db_id)
+    run_selfplay(config, replay_buffer, network_storage, test)
 
 def muzero(config, db_id):
 
-    global wrapped_run_selfplay
-
     config.set_log_file(f"./results/{config.game}-{time.strftime('%Y%m%d-%H%M%S')}.events")
 
-    def wrapped_run_selfplay(i, test=False):
-        logging.info(f"Starting worker {i}")
-
-        replay_buffer, network_storage = get_storage(config, db_id)
-
-        run_selfplay(config, replay_buffer, network_storage, test)
 
     pool = Pool(processes=config.num_actors + 1)
 
     # start test worker
-    pool.apply_async(wrapped_run_selfplay, [0, True])
+    pool.apply_async(wrapped_run_selfplay, [0, True, config, db_id])
 
+    # start test worker
     # start self_play workers
     for i in range(config.num_actors):
-        pool.apply_async(wrapped_run_selfplay, [i+1, False])
+        pool.apply_async(wrapped_run_selfplay, [i+1, False, config, db_id])
 
     replay_buffer, network_storage = get_storage(config, db_id)
 
     train_network(config, network_storage, replay_buffer)
 
     pool.close()
-

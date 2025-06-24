@@ -1,5 +1,5 @@
 import numpy as np
-from src.data_classes import Turn
+from muzero.data_classes import Turn
 
 def group(y):
     y = y[y != 0]

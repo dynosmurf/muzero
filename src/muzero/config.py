@@ -60,7 +60,7 @@ class Config(object):
         self.to_play_fn = two_player_game
 
         # If we already have some information about which values occur in the
-        # This is not strictly necessary, but establishes identical behaviour to
+        # This is not strictly necessary, but establishes identical behavior to
         # AlphaZero in board games.
         self.known_bounds = known_bounds
 

@@ -1,5 +1,5 @@
 import gym
-from src.game import Turn
+from muzero.game import Turn
 
 class CartpoleEnvWrapper():
 

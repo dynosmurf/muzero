@@ -1,8 +1,9 @@
-from tensorflow.keras.layers import *
+from keras.layers import *
 import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
 import numpy as np
 import math
+tf.experimental.numpy.experimental_enable_numpy_behavior()
 
 
 def scale_gradient(tensor, scale):
@@ -57,9 +58,12 @@ def atari_downsample(x_in):
     return x
 
 
-def scale_to_0_1(t):
-    return (t -  tf.reduce_min(t)) / (tf.reduce_max(t) - tf.reduce_min(t))
-
+def scale_to_0_1_per_sample(x):
+    axes = tf.range(1, tf.rank(x))  # symbolic-safe
+    t_min = tf.reduce_min(x, axis=axes, keepdims=True)
+    t_max = tf.reduce_max(x, axis=axes, keepdims=True)
+    denom = tf.maximum(t_max - t_min, 1e-6)
+    return (x - t_min) / denom
 
 @tf.function
 def scale_target(x):
@@ -96,33 +100,49 @@ def encode_support(x, size):
     x_shape = tuple(x.shape)
     x_dims = np.prod(x_shape)
     support_dim = 2 * size + 1
-    x = tnp.reshape(x, (np.prod(x_shape),))
-    x = tnp.clip(x, -size, size)
+    x_flat = tf.reshape(x, [-1])
+    x_clipped = tf.clip_by_value(x_flat, -size, size)
 
-    x_low = (stable_sign(x, support_dim) * (tnp.ceil(tnp.abs(x)) - 1)).astype("int32")
-    x_high = (tnp.sign(x) * tnp.ceil(tnp.abs(x))).astype("int32") 
 
-    # solve the system
-    p_high = (x - x_low) / (x_high - x_low)
-    p_low = 1 - p_high
+    abs_x = tf.abs(x_clipped)
+    sign_x = tf.cast(tf.sign(x_clipped), tf.int32)
 
-    # if x is 0 x_low will be -1 which is outsize the  bounds
-    # this will only be a problem if x = 0 in which case p_high will be 1
-    x_low = (tnp.sign(x) * tnp.maximum(tnp.abs(x_low), 0)).astype("int32")
+    # Calculate low and high support indices
+    x_low = tf.cast(sign_x * (tf.math.ceil(abs_x) - 1), tf.int32)
+    x_high = tf.cast(sign_x * tf.math.ceil(abs_x), tf.int32)
 
-    low_idx = tnp.array(np.arange(x_dims)) * support_dim + x_low + size
-    high_idx = tnp.array(np.arange(x_dims)) * support_dim + x_high + size
-
-    low_idx = tf.expand_dims(low_idx, -1)
-    high_idx = tf.expand_dims(high_idx, -1)
-
-    x_encoded = tnp.zeros((x_dims * support_dim), dtype="float32")
-    x_encoded = tf.tensor_scatter_nd_add(x_encoded, low_idx, p_low)
-    x_encoded = tf.tensor_scatter_nd_add(x_encoded, high_idx, p_high)
+    # Compute weights
+    denom = tf.cast(x_high - x_low, tf.float32)
+    # To avoid division by zero (when x_high == x_low), set denom to 1 (weights will be 0 and 1 accordingly)
+    denom = tf.where(denom == 0, tf.ones_like(denom), denom)
     
-    x_encoded = tnp.reshape(x_encoded, x_shape + (support_dim,)) 
+    p_high = (x_clipped - tf.cast(x_low, tf.float32)) / denom
+    p_low = 1.0 - p_high
+    
+    # Fix x_low if it's out of bounds when x is zero
+    x_low = tf.cast(sign_x * tf.maximum(tf.abs(x_low), 0), tf.int32)
 
-    return x_encoded 
+    # Compute indices into the flat encoded tensor
+    idx_range = tf.range(tf.shape(x_flat)[0], dtype=tf.int32)
+    low_idx = idx_range * support_dim + x_low + size
+    high_idx = idx_range * support_dim + x_high + size
+    
+    # Create initial zero tensor for encoded representation
+    x_encoded_flat = tf.zeros([tf.shape(x_flat)[0] * support_dim], dtype=tf.float32)
+    
+    # Prepare indices for scatter update
+    low_idx_exp = tf.expand_dims(low_idx, axis=1)
+    high_idx_exp = tf.expand_dims(high_idx, axis=1)
+    
+    # Scatter add weights to their respective positions
+    x_encoded_flat = tf.tensor_scatter_nd_add(x_encoded_flat, low_idx_exp, p_low)
+    x_encoded_flat = tf.tensor_scatter_nd_add(x_encoded_flat, high_idx_exp, p_high)
+    
+    # Reshape back to original shape with support dimension appended
+    out_shape = tf.concat([x_shape, [support_dim]], axis=0)
+    x_encoded = tf.reshape(x_encoded_flat, out_shape)
+    
+    return x_encoded
 
 
 @tf.function

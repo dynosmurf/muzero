@@ -2,9 +2,9 @@ import numpy as np
 from dataclasses import dataclass
 import logging
 
-from src.prof import p, fl
-from src.mcts import MonteCarloTreeSearch
-from src.data_classes import Turn
+from muzero.prof import p, fl
+from muzero.mcts import MonteCarloTreeSearch
+from muzero.data_classes import Turn
 
 def play_game(config, network, env, step, test=False):
 

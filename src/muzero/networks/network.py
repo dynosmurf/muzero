@@ -1,12 +1,12 @@
-from tensorflow.keras import Model
+from keras import Model
 import tensorflow as tf
 import tensorflow.experimental.numpy as tnp
 import numpy as np
 import io
 
-from src.networks.utils import scale_gradient, scale_target, scalar_loss, encode_support, decode_support, unscale_target
-from src.data_classes import NetworkOutput
-from src.prof import p, fl
+from muzero.networks.utils import scale_gradient, scale_target, scalar_loss, encode_support, decode_support, unscale_target
+from muzero.data_classes import NetworkOutput
+from muzero.prof import p, fl
 
 
 class Network(Model):
@@ -53,7 +53,7 @@ class Network(Model):
 
         trainable_vars = self.trainable_variables
         
-        # Note: from here variables will not be named with "batch" but every caclulation is done 
+        # Note: from here variables will not be named with "batch" but every calculation is done 
         # batch-wise so each variable has first dimension `batch_size`
         with tf.GradientTape(watch_accessed_variables=False) as tape:
             tape.watch(trainable_vars)

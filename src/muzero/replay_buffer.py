@@ -5,8 +5,8 @@ import msgpack_numpy as m
 from walrus import Database 
 import tensorflow as tf
 
-from src.game import GameLog
-from src.data_classes import Batch
+from muzero.game import GameLog
+from muzero.data_classes import Batch
 
 # this is required for msgpack_numpy to work
 m.patch()

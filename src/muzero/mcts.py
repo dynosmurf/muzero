@@ -4,8 +4,8 @@ from numba.experimental import jitclass
 import numpy as np
 import math
 
-from src.prof import p, fl
-from src.util import softmax_sample
+from muzero.prof import p, fl
+from muzero.util import softmax_sample
 
 
 def update_min_max(min_max_tuple, value):
@@ -202,7 +202,7 @@ class MonteCarloTreeSearch():
     def add_exploration_noise(self, node):
         """
         Adds some noise to the policy distribution of the root node 
-        to encorage exploration. Adds noise while ensuring the prior is
+        to encourage exploration. Adds noise while ensuring the prior is
         greater than or equal to zero and less than or equal to 1
         """
 

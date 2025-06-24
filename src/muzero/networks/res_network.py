@@ -1,14 +1,13 @@
-from tensorflow.keras.layers import *
-from tensorflow.keras import Model
+from keras import Model
 import tensorflow as tf
 import numpy as np
-from tensorflow.keras.utils import to_categorical   
+from keras.utils import to_categorical   
 import typing
 from typing import Dict, List, Optional
 import tensorflow.experimental.numpy as tnp
-from tensorflow.keras.layers import *
-from src.networks.network import Network
-from src.networks.utils import conv_block, residual_block, dense_block, scale_to_0_1
+from keras.layers import *
+from muzero.networks.network import Network
+from muzero.networks.utils import conv_block, residual_block, dense_block, scale_to_0_1_per_sample
 
 
 def build_prediction(input_shape, output_dim, support_dim):
@@ -85,7 +84,7 @@ def build_dynamics(input_shape, hidden_shape, support_dim, action_space_size):
         x = residual_block(x)
 
     # state "head"
-    hidden_state_scaled = scale_to_0_1(x)
+    hidden_state_scaled = Lambda(scale_to_0_1_per_sample)(x)
 
     # reward "head"
     x_reward = Conv2D(1, 1)(x)
@@ -116,7 +115,7 @@ def build_representation(input_shape, hidden_state_shape, downsample=None):
         x = residual_block(x)
 
     # state "head"
-    hidden_state_scaled = scale_to_0_1(x)
+    hidden_state_scaled = Lambda(scale_to_0_1_per_sample)(x)
 
     return Model(x_in, hidden_state_scaled)
 

@@ -2,11 +2,11 @@ import unittest
 import random
 import numpy as np
 
-from src.config import *
-from src.data_classes import NetworkOutput
-from src.mcts import *
+from muzero.config import *
+from muzero.data_classes import NetworkOutput
+from muzero.mcts import *
 
-from test.mocks import *
+from .mocks import *
 
 seed = 2021
 random.seed(seed)

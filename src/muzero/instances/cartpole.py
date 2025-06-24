@@ -1,9 +1,9 @@
-from src.config import Config
-from src.main import muzero, flush_db
-from src.environments.cartpole import CartpoleEnvWrapper
-from src.mcts import MonteCarloTreeSearch
-from src.networks.fc_network import FCNetwork 
-from src.prof import profile
+from muzero.config import Config
+from muzero.main import muzero, flush_db
+from muzero.environments.cartpole import CartpoleEnvWrapper
+from muzero.mcts import MonteCarloTreeSearch
+from muzero.networks.fc_network import FCNetwork 
+from muzero.prof import profile
 
 class CartpoleConfig(Config):
 
@@ -18,9 +18,9 @@ class CartpoleConfig(Config):
                 num_actors=2,
                 training_steps=10000,
                 num_unroll_steps=10,
-                batch_size=128,
+                batch_size=16,
                 td_steps=50,
-                lr_init=0.02,
+                lr_init=0.0002,
                 lr_decay_steps=1000,
                 lr_decay_rate=0.9,
                 discount=0.997,

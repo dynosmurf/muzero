@@ -1,11 +1,11 @@
 import unittest
 import tensorflow as tf
-from src.mcts import *
-from src.replay_buffer import Batch
-from src.config import *
-from src.networks.res_network import ResNetwork 
-from src.networks.fc_network import FCNetwork 
-from src.networks.utils import *
+from muzero.mcts import *
+from muzero.replay_buffer import Batch
+from muzero.config import *
+from muzero.networks.res_network import ResNetwork 
+from muzero.networks.fc_network import FCNetwork 
+from muzero.networks.utils import *
 import numpy as np
 
 class TestFCNetwork(unittest.TestCase):
@@ -29,9 +29,9 @@ class TestNetwork(unittest.TestCase):
         e = np.array([
             [0, 0, 0, 0.4, 0.6],
             [0.9, 0.1, 0, 0, 0]
-            ])
+            ], dtype="float32")
 
-        r = encode_support(np.array([0.4 + 0.6 * 2, -2*.9 - 0.1]), 2)
+        r = encode_support(np.array([0.4 + 0.6 * 2, -2*.9 - 0.1], dtype="float32"), 2)
 
         assert np.allclose(r, e) 
 
@@ -41,7 +41,7 @@ class TestNetwork(unittest.TestCase):
         e = np.array([
             [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
-            ])
+            ], dtype="float32")
 
         # r = encode_support(np.array([
         #    np.arange(-10, 10),
@@ -49,7 +49,7 @@ class TestNetwork(unittest.TestCase):
 
         r = encode_support(np.array([
             [-11, 11],
-        ]), 10)
+        ], dtype="float32"), 10)
 
         assert np.allclose(r, e) 
 
@@ -60,7 +60,7 @@ class TestNetwork(unittest.TestCase):
             [0, 0.5, 0.5, 0, 0],
             [0, 0, 1, 0, 0],
             [0, 0, 0.5, 0.5, 0],
-        ])
+        ], dtype="float32")
 
         # r = encode_support(np.array([
         #    np.arange(-10, 10),
@@ -69,7 +69,7 @@ class TestNetwork(unittest.TestCase):
 
         r = encode_support(np.array([
             [-0.5, 0, 0.5],
-        ]), 2)
+        ], dtype="float32"), 2)
 
         assert np.allclose(r, e) 
 

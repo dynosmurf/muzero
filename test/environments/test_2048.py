@@ -1,8 +1,8 @@
 import unittest
-from src.environments.headless_2048 import *
+from muzero.environments.headless_2048 import *
 import numpy as np
 
-from src.prof import profile
+from muzero.prof import profile
 
 class Test2048(unittest.TestCase):
 

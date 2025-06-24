@@ -1,10 +1,10 @@
-from tensorflow.keras.layers import *
-from tensorflow.keras import Model
+from keras.layers import *
+from keras import Model
 import tensorflow as tf
 import numpy as np
 
-from src.networks.network import Network
-from src.networks.utils import dense_block, scale_to_0_1
+from muzero.networks.network import Network
+from muzero.networks.utils import dense_block, scale_to_0_1_per_sample 
 
 
 def build_prediction(hidden_shape, action_space_size, support_size, hidden_layers=8, layer_size=64):
@@ -49,7 +49,7 @@ def build_dynamics(hidden_shape, action_space_size, support_size, hidden_layers=
 
     x_state = Dense(np.product(hidden_shape))(x_state)
     hidden_state = Reshape(hidden_shape, name="dynamics_hidden_state")(x_state)
-    hidden_state_scaled = scale_to_0_1(hidden_state)
+    hidden_state_scaled = Lambda(scale_to_0_1_per_sample)(hidden_state)
 
     # reward "head"
     x_reward = Dense(layer_size)(x)
@@ -68,7 +68,7 @@ def build_representation(input_shape, hidden_state_shape, downsample=None, hidde
     x_state = Dense(np.product(hidden_state_shape))(x)
     hidden_state = Reshape(hidden_state_shape)(x_state)
 
-    hidden_state_scaled = scale_to_0_1(hidden_state)
+    hidden_state_scaled = Lambda(scale_to_0_1_per_sample)(hidden_state)
 
     return Model(x_in, hidden_state_scaled)
 
